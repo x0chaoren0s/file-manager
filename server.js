@@ -136,6 +136,65 @@ app.get('/api/view-file/:dir?/:filename', (req, res) => {
     });
 });
 
+// 添加速度测试端点
+app.get('/api/speedtest', (req, res) => {
+    const fileSize = 100 * 1024 * 1024; // 100MB
+    const chunkSize = 1024 * 1024; // 1MB chunks
+    let bytesSent = 0;
+    const startTime = process.hrtime();
+
+    // 设置响应头
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Length', fileSize);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Accept-Ranges', 'bytes');
+
+    // 使用 Transform 流来监控传输速度
+    const transform = new require('stream').Transform({
+        transform(chunk, encoding, callback) {
+            bytesSent += chunk.length;
+            
+            // 每秒输出一次速度
+            const diff = process.hrtime(startTime);
+            const seconds = diff[0] + diff[1] / 1e9;
+            const mbps = (bytesSent / seconds / 1024 / 1024).toFixed(2);
+            console.log(`传输速度: ${mbps} MB/s, 已传输: ${(bytesSent/1024/1024).toFixed(2)}MB`);
+            
+            callback(null, chunk);
+        }
+    });
+
+    // 创建可读流
+    const readable = new require('stream').Readable({
+        read(size) {
+            const remaining = fileSize - (this.bytesRead || 0);
+            if (remaining <= 0) {
+                this.push(null);
+                return;
+            }
+
+            const length = Math.min(chunkSize, remaining);
+            const chunk = Buffer.alloc(length);
+            this.bytesRead = (this.bytesRead || 0) + length;
+            this.push(chunk);
+        }
+    });
+
+    // 流式传输
+    readable
+        .pipe(transform)
+        .pipe(res)
+        .on('error', (err) => {
+            console.error('传输错误:', err);
+            res.end();
+        })
+        .on('finish', () => {
+            const diff = process.hrtime(startTime);
+            const seconds = diff[0] + diff[1] / 1e9;
+            console.log(`传输完成，总用时: ${seconds.toFixed(2)}秒`);
+        });
+});
+
 app.listen(7631, () => {
     console.log('Server running on http://localhost:7631'); 
 });
