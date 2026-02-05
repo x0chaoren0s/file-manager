@@ -1,3 +1,13 @@
-/node_modules
-/uploads.bak
-/uploads
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Gemini / Antigravity folders
+.gemini/
+brain/
+implementation_plan.md
+task.md
+walkthrough.md
+
+# Logs
+*.log

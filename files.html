@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>文件管理器</title>
+    <style>
+        :root {
+            --bg: #0b1020;
+            --muted: #151b2f;
+            --text: #e6edf3;
+            --sub: #9fb0c3;
+            --accent: #4aa3ff;
+            --danger: #ff6b6b;
+            --ok: #37d399;
+            --warn: #fbbf24;
+        }
+
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        header h1 {
+            font-size: 18px;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .path {
+            color: var(--sub);
+            word-break: break-all;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        button,
+        .btn {
+            background: var(--muted);
+            color: var(--text);
+            border: 1px solid #25304a;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        button:hover,
+        .btn:hover {
+            background: #1a2340;
+        }
+
+        button.danger {
+            border-color: #5c2b2b;
+            color: #ffd4d4;
+        }
+
+        button.danger:hover {
+            background: #2a1717;
+        }
+
+        .status {
+            margin: 12px 0;
+            min-height: 22px;
+            color: var(--sub);
+        }
+
+        .panel {
+            background: var(--muted);
+            border: 1px solid #25304a;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table thead th {
+            text-align: left;
+            padding: 12px;
+            background: #0f1527;
+            color: var(--sub);
+            font-weight: 600;
+            border-bottom: 1px solid #25304a;
+        }
+
+        .table tbody td {
+            padding: 12px;
+            border-bottom: 1px solid #25304a;
+            vertical-align: middle;
+        }
+
+        .name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tag {
+            font-size: 12px;
+            color: #8fb3ff;
+            background: #0b2a55;
+            border: 1px solid #1e3a75;
+            padding: 1px 6px;
+            border-radius: 999px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .nowrap {
+            white-space: nowrap;
+        }
+
+        .muted {
+            color: var(--sub);
+        }
+
+        .dropzone {
+            margin-top: 16px;
+            padding: 18px;
+            border: 1px dashed #39507e;
+            border-radius: 12px;
+            color: #b8c7da;
+            text-align: center;
+        }
+
+        .dropzone.dragover {
+            background: #0f1527;
+        }
+
+        input[type="text"] {
+            background: #0b1020;
+            color: var(--text);
+            border: 1px solid #25304a;
+            border-radius: 6px;
+            padding: 6px 8px;
+        }
+
+        input[type="file"] {
+            color: var(--text);
+        }
+
+        .inline-form {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .hint {
+            color: #8aa0b9;
+            font-size: 12px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .mobile-only {
+            display: none;
+        }
+
+        /* Markdown styles */
+        .md-body {
+            color: var(--text);
+        }
+
+        .md-body h1,
+        .md-body h2,
+        .md-body h3,
+        .md-body h4,
+        .md-body h5,
+        .md-body h6 {
+            margin: 16px 0 8px;
+        }
+
+        .md-body p {
+            margin: 10px 0;
+        }
+
+        .md-body pre {
+            background: #0b1020;
+            border: 1px solid #25304a;
+            border-radius: 8px;
+            padding: 12px;
+            overflow: auto;
+        }
+
+        .md-body code {
+            background: #0f1527;
+            border: 1px solid #25304a;
+            border-radius: 6px;
+            padding: 1px 4px;
+        }
+
+        .md-body pre code {
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+
+        .md-body ul,
+        .md-body ol {
+            padding-left: 22px;
+        }
+
+        .md-body blockquote {
+            border-left: 3px solid #39507e;
+            margin: 8px 0;
+            padding: 4px 10px;
+            color: #c9d6e2;
+            background: #0f1527;
+        }
+
+        .md-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+
+        .md-body th,
+        .md-body td {
+            border: 1px solid #25304a;
+            padding: 6px 10px;
+            text-align: left;
+        }
+
+        .md-body a {
+            color: var(--accent);
+        }
+
+        /* Image viewer */
+        #viewer-img-wrap {
+            display: none;
+            width: 100%;
+            height: 100%;
+            background: #0b1020;
+            position: relative;
+        }
+
+        #viewer-img-wrap img {
+            position: absolute;
+            inset: 0;
+            margin: auto;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 14px;
+            }
+
+            header h1 {
+                font-size: 16px;
+            }
+
+            .toolbar {
+                gap: 6px;
+            }
+
+            button,
+            .btn {
+                padding: 9px 12px;
+            }
+
+            .name a {
+                font-size: 16px;
+            }
+
+            .tag {
+                font-size: 11px;
+            }
+
+            .table thead {
+                display: none;
+            }
+
+            .desktop-only {
+                display: none !important;
+            }
+
+            .mobile-only {
+                display: block !important;
+                color: #9fb0c3;
+                margin-top: 4px;
+                font-size: 12px;
+            }
+
+            .actions {
+                gap: 8px;
+            }
+
+            .mobile-actions {
+                display: flex;
+                margin-top: 8px;
+                flex-wrap: wrap;
+            }
+        }
+
+        #viewer-overlay {
+            display: flex;
+        }
+
+        #viewer-overlay.hidden {
+            display: none;
+        }
+    </style>
+    <noscript>需要启用 JavaScript</noscript>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>文件管理器</h1>
+            <div class="path" id="current-path"></div>
+        </header>
+
+        <div class="toolbar">
+            <button id="refresh-btn">刷新</button>
+            <label class="btn" for="file-input">选择文件上传</label>
+            <input id="file-input" type="file" multiple class="hidden" />
+        </div>
+        <div class="status" id="status"></div>
+
+        <div class="panel">
+            <table class="table" id="file-table">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th class="nowrap">大小</th>
+                        <th class="nowrap">修改时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="file-tbody">
+                    <tr>
+                        <td colspan="4" class="muted">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="viewer-overlay" class="hidden"
+            style="position:fixed; inset:0; background:rgba(0,0,0,0.55); align-items:center; justify-content:center; z-index:9999;">
+            <div
+                style="background:var(--muted); border:1px solid #25304a; border-radius:12px; width:min(1000px, 92vw); height:min(80vh, 800px); display:flex; flex-direction:column; overflow:hidden;">
+                <div
+                    style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:#0f1527; border-bottom:1px solid #25304a;">
+                    <div id="viewer-title" class="muted"
+                        style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                    <div style="display:flex; gap:8px;">
+                        <button id="viewer-toggle" class="btn hidden">源码</button>
+                        <a id="viewer-open-raw" class="btn" target="_blank" rel="noopener" download>下载</a>
+                        <button id="viewer-close" class="btn">关闭</button>
+                    </div>
+                </div>
+                <div style="flex:1; overflow:auto; position:relative;">
+                    <div id="viewer-img-wrap"><img id="viewer-img" alt="preview" /></div>
+                    <div id="viewer-html" class="md-body"
+                        style="display:none; padding:14px; background:#0b1020; color:#e6edf3; line-height:1.6;"></div>
+                    <pre id="viewer-pre"
+                        style="margin:0; padding:14px; background:#0b1020; color:#e6edf3; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; line-height:1.4; white-space:pre;">
+          </pre>
+                </div>
+                <div id="viewer-hint" class="hint" style="padding:8px 12px; border-top:1px solid #25304a;"></div>
+            </div>
+        </div>
+
+        <div id="upload-zone" class="dropzone">
+            拖拽文件到此处上传，或点击上方“选择文件上传”<br />
+            <span class="hint">上传会使用 HTTP PUT 到当前目录；如需重名覆盖请确认服务端允许</span>
+        </div>
+
+        <p class="hint">说明：页面优先使用 WebDAV 方法（PROPFIND/PUT/MOVE/DELETE）。若服务端未启用 WebDAV，将尝试解析目录索引 HTML
+            获取列表；但重命名/删除需服务端支持相应方法。</p>
+    </div>
+
+    <script>
+        (function () {
+            function computeBasePath(pathname) {
+                // 若为文件路径（如 /index.html），使用父目录作为工作目录
+                return pathname.endsWith('/') ? pathname : pathname.slice(0, pathname.lastIndexOf('/') + 1);
+            }
+
+            const state = {
+                currentPathname: window.location.pathname,
+                basePath: computeBasePath(window.location.pathname),
+                origin: window.location.origin,
+                items: [],
+                webdavCapable: true,
+                supportsPut: false,
+                supportsMove: false,
+                supportsDelete: false,
+            };
+
+            const el = {
+                path: document.getElementById('current-path'),
+                status: document.getElementById('status'),
+                tbody: document.getElementById('file-tbody'),
+                refreshBtn: document.getElementById('refresh-btn'),
+                fileInput: document.getElementById('file-input'),
+                dropzone: document.getElementById('upload-zone'),
+            };
+
+            function renderBreadcrumbs() {
+                const parts = state.basePath.split('/').filter(Boolean);
+                const crumbs = [];
+                // root
+                crumbs.push(`<a href="/" data-action="crumb" data-href="/">/</a>`);
+                let accum = '';
+                for (let i = 0; i < parts.length; i++) {
+                    accum += '/' + parts[i];
+                    const display = decodeURIComponent(parts[i]);
+                    const target = accum + '/';
+                    crumbs.push(`<span class="muted">/</span> <a href="${target}" data-action="crumb" data-href="${target}">${escapeHtml(display)}</a>`);
+                }
+                el.path.innerHTML = crumbs.join(' ');
+            }
+
+            renderBreadcrumbs();
+
+            function setStatus(message, type = 'info') {
+                if (!message) { el.status.textContent = ''; return; }
+                const prefix = type === 'error' ? '错误：' : (type === 'success' ? '完成：' : '');
+                el.status.textContent = prefix + message;
+            }
+
+            function joinPath(basePath, name) {
+                if (!basePath.endsWith('/')) basePath += '/';
+                return basePath + name;
+            }
+
+            function encodePath(pathname) {
+                // Encode each segment but keep '/'
+                return pathname.split('/').map(seg => encodeURIComponent(seg)).join('/').replace(/%2F/gi, '/');
+            }
+
+            function formatBytes(bytes) {
+                if (bytes == null || isNaN(bytes)) return '-';
+                const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+                let idx = 0; let num = Number(bytes);
+                while (num >= 1024 && idx < units.length - 1) { num /= 1024; idx++; }
+                return num.toFixed(num < 10 && idx > 0 ? 2 : 0) + ' ' + units[idx];
+            }
+
+            function formatDate(str) {
+                if (!str) return '-';
+                const d = new Date(str);
+                if (String(d) === 'Invalid Date') return '-';
+                const pad = n => String(n).padStart(2, '0');
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            }
+
+            function normalizeHrefToPathname(href) {
+                try { return new URL(href, state.origin).pathname; } catch { return href; }
+            }
+
+            function isPreviewable(name) {
+                const n = String(name || '').toLowerCase();
+                return n.endsWith('.log') || n.endsWith('.sh') || n.endsWith('.py') || n.endsWith('.md') ||
+                    n.match(/\.(png|jpe?g|gif|svg|bmp|webp)$/);
+            }
+
+            function isImageFile(name) {
+                const n = String(name || '').toLowerCase();
+                return /\.(png|jpe?g|gif|svg|bmp|webp)$/.test(n);
+            }
+
+            async function listByJson(dirPath) {
+                const url = dirPath + (dirPath.includes('?') ? '&' : '?') + '__list=1';
+                const res = await fetch(url, { method: 'GET', credentials: 'include' });
+                if (!res.ok) throw new Error('JSON 列表失败，HTTP ' + res.status);
+                const data = await res.json();
+                const items = Array.isArray(data.items) ? data.items : [];
+                return items.map(it => ({
+                    name: String(it.name || '').replace(/\/$/, ''),
+                    isDir: !!it.isDir,
+                    size: it.size == null ? null : Number(it.size),
+                    mtime: it.mtime ? new Date(it.mtime * 1000).toUTCString() : null,
+                    href: joinPath(dirPath, String(it.name || '')),
+                }));
+            }
+
+            function isSamePath(a, b) {
+                const na = a.endsWith('/') ? a : a + '/';
+                const nb = b.endsWith('/') ? b : b + '/';
+                return na === nb;
+            }
+
+            async function listByWebDAV() {
+                const body = `<?xml version="1.0" encoding="utf-8"?>\n<d:propfind xmlns:d="DAV:">\n  <d:prop>\n    <d:displayname/>\n    <d:getcontentlength/>\n    <d:getlastmodified/>\n    <d:resourcetype/>\n  </d:prop>\n</d:propfind>`;
+                const res = await fetch(state.basePath, {
+                    method: 'PROPFIND',
+                    headers: { 'Depth': '1', 'Content-Type': 'text/xml; charset=utf-8' },
+                    body,
+                    credentials: 'include',
+                });
+                if (!res.ok) throw new Error('PROPFIND 失败，HTTP ' + res.status);
+                const text = await res.text();
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(text, 'application/xml');
+                const responses = Array.from(xml.getElementsByTagNameNS('*', 'response'));
+                const items = [];
+                for (const r of responses) {
+                    const hrefNode = r.getElementsByTagNameNS('*', 'href')[0];
+                    if (!hrefNode) continue;
+                    const href = normalizeHrefToPathname(hrefNode.textContent || '');
+                    if (!href) continue;
+                    if (isSamePath(href, state.basePath)) continue; // skip self
+
+                    const propstat = r.getElementsByTagNameNS('*', 'propstat')[0];
+                    const prop = propstat ? propstat.getElementsByTagNameNS('*', 'prop')[0] : null;
+                    const displayName = prop ? (prop.getElementsByTagNameNS('*', 'displayname')[0]?.textContent || '') : '';
+                    const lengthStr = prop ? (prop.getElementsByTagNameNS('*', 'getcontentlength')[0]?.textContent || '') : '';
+                    const lastMod = prop ? (prop.getElementsByTagNameNS('*', 'getlastmodified')[0]?.textContent || '') : '';
+                    const resType = prop ? prop.getElementsByTagNameNS('*', 'resourcetype')[0] : null;
+                    const isCollection = !!(resType && resType.getElementsByTagNameNS('*', 'collection')[0]);
+
+                    const name = decodeURIComponent(displayName || href.split('/').filter(Boolean).pop() || '');
+                    items.push({
+                        name,
+                        isDir: isCollection || href.endsWith('/'),
+                        size: isCollection ? null : (lengthStr ? Number(lengthStr) : null),
+                        mtime: lastMod || null,
+                        href,
+                    });
+                }
+                return items.sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : (a.isDir ? -1 : 1)));
+            }
+
+            async function listByHtmlIndex() {
+                const res = await fetch(state.basePath, { method: 'GET', credentials: 'include' });
+                if (!res.ok) throw new Error('目录获取失败，HTTP ' + res.status);
+                const contentType = res.headers.get('Content-Type') || '';
+                if (!contentType.includes('text/html')) throw new Error('非 HTML 索引，无法解析');
+                const html = await res.text();
+                // 若获取到的是本页面（例如 http.server 存在 index.html 时返回该文件而不是目录索引），提示用户改名
+                if (html.includes('<title>文件管理器</title>') || html.includes('文件管理器')) {
+                    throw new Error('检测到服务器返回的是本页面而非目录索引。请将本文件改名为非 index.html（如 files.html）后再访问，以便显示目录列表。');
+                }
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const items = [];
+                // 优先解析 python http.server 的表格索引
+                const table = doc.querySelector('table');
+                if (table) {
+                    const rows = Array.from(table.querySelectorAll('tr'));
+                    for (let i = 1; i < rows.length; i++) {
+                        const cells = rows[i].children;
+                        if (cells.length < 2) continue;
+                        const a = cells[0].querySelector('a');
+                        if (!a) continue;
+                        const hrefAttr = a.getAttribute('href') || '';
+                        const text = (a.textContent || '').trim();
+                        if (!hrefAttr) continue;
+                        if (text === '..' || hrefAttr === '../') continue;
+                        const abs = normalizeHrefToPathname(hrefAttr.startsWith('http') ? hrefAttr : new URL(hrefAttr, state.basePath,).href);
+                        if (!abs.startsWith(state.basePath)) continue;
+                        const name = decodeURIComponent(abs.split('/').filter(Boolean).pop() || '');
+                        const mtimeRaw = cells[1]?.textContent?.trim() || null;
+                        const sizeRaw = cells[2]?.textContent?.trim() || null;
+                        const isDir = hrefAttr.endsWith('/') || text.endsWith('/');
+                        items.push({ name, isDir, size: null, sizeRaw: sizeRaw && sizeRaw !== '-' ? sizeRaw : null, mtime: null, mtimeRaw: mtimeRaw && mtimeRaw !== '-' ? mtimeRaw : null, href: abs });
+                    }
+                } else {
+                    // 回退为通用 a 标签解析（不含大小/时间）
+                    const anchors = Array.from(doc.querySelectorAll('a'));
+                    for (const a of anchors) {
+                        const text = (a.textContent || '').trim();
+                        const hrefAttr = a.getAttribute('href') || '';
+                        if (!hrefAttr) continue;
+                        if (text === '..' || hrefAttr === '../') continue;
+                        const abs = normalizeHrefToPathname(hrefAttr.startsWith('http') ? hrefAttr : new URL(hrefAttr, location.href).href);
+                        if (!abs.startsWith(state.basePath)) continue;
+                        const name = decodeURIComponent(abs.split('/').filter(Boolean).pop() || '');
+                        items.push({ name, isDir: abs.endsWith('/'), size: null, sizeRaw: null, mtime: null, mtimeRaw: null, href: abs });
+                    }
+                }
+                const unique = new Map(items.map(it => [it.href, it]));
+                return Array.from(unique.values()).sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : (a.isDir ? -1 : 1)));
+            }
+
+            async function refresh() {
+                setStatus('正在加载列表...');
+                el.tbody.innerHTML = '<tr><td colspan="4" class="muted">加载中...</td></tr>';
+                try {
+                    let items = [];
+                    // 1) 优先尝试本服务 JSON 列表
+                    try {
+                        items = await listByJson(state.basePath);
+                        state.webdavCapable = false;
+                    } catch (_jsonErr) {
+                        // 2) WebDAV（若更换为支持 DAV 的服务器）
+                        try {
+                            items = await listByWebDAV();
+                            state.webdavCapable = true;
+                        } catch (_davErr) {
+                            // 3) HTML 索引解析
+                            state.webdavCapable = false;
+                            items = await listByHtmlIndex();
+                        }
+                    }
+                    state.items = items;
+                    await probeCapabilities();
+                    if (!state.webdavCapable) {
+                        await enrichViaHEAD(state.items);
+                    }
+                    renderTable();
+                    setStatus(`已加载 ${items.length} 项`);
+                    async function enrichViaHEAD(items) {
+                        const files = items.filter(it => !it.isDir);
+                        await Promise.all(files.map(async (it) => {
+                            try {
+                                const res = await fetch(it.href, { method: 'HEAD', credentials: 'include' });
+                                if (!res.ok) return;
+                                const len = res.headers.get('Content-Length');
+                                const lm = res.headers.get('Last-Modified');
+                                if (len) it.size = Number(len);
+                                if (lm) it.mtime = lm;
+                            } catch { }
+                        }));
+                    }
+                } catch (err) {
+                    console.error(err);
+                    setStatus(String(err && err.message || err), 'error');
+                    el.tbody.innerHTML = '<tr><td colspan="4" class="muted">加载失败</td></tr>';
+                }
+            }
+
+            async function probeCapabilities() {
+                try {
+                    const res = await fetch(state.basePath, { method: 'OPTIONS', credentials: 'include' });
+                    const allow = (res.headers.get('Allow') || '').toUpperCase();
+                    state.supportsPut = allow.includes('PUT');
+                    state.supportsMove = allow.includes('MOVE');
+                    state.supportsDelete = allow.includes('DELETE');
+                } catch {
+                    state.supportsPut = state.supportsMove = state.supportsDelete = false;
+                }
+            }
+
+            function renderTable() {
+                if (!state.items.length) {
+                    el.tbody.innerHTML = '<tr><td colspan="4" class="muted">空目录</td></tr>';
+                    return;
+                }
+                const rows = state.items.map(item => {
+                    const downloadHref = item.href;
+                    const nameHtml = item.isDir
+                        ? `<span class="tag">目录</span><a href="${downloadHref}">${escapeHtml(item.name)}/</a>`
+                        : `<span class="tag">文件</span><a href="${downloadHref}" download>${escapeHtml(item.name)}</a>`;
+                    const sizeHtml = item.isDir ? '-' : (item.size != null ? formatBytes(item.size) : (item.sizeRaw || '-'));
+                    const timeHtml = item.mtime ? formatDate(item.mtime) : (item.mtimeRaw || '-');
+                    const baseActions = [];
+                    if (item.isDir) {
+                        baseActions.push(`<button class="btn" data-action="enter" data-href="${downloadHref}">打开</button>`);
+                    } else {
+                        if (isPreviewable(item.name)) {
+                            baseActions.push(`<button class="btn" data-action="view" data-href="${downloadHref}" data-name="${escapeHtml(item.name)}">查看</button>`);
+                        }
+                        baseActions.push(`<a class="btn" href="${downloadHref}" download>下载</a>`);
+                    }
+                    if (state.supportsMove) {
+                        baseActions.push(`<button data-action="rename" data-href="${downloadHref}">重命名</button>`);
+                    }
+                    if (state.supportsDelete) {
+                        baseActions.push(`<button class="danger" data-action="delete" data-href="${downloadHref}">删除</button>`);
+                    }
+                    const actions = baseActions.join(' ');
+                    return `<tr>
+          <td>
+            <div class="name">${nameHtml}</div>
+            <div class="mobile-only">
+              <div><span>${sizeHtml}</span><span style="margin:0 6px;">•</span><span>${timeHtml}</span></div>
+              <div class="mobile-actions">${actions}</div>
+            </div>
+          </td>
+          <td class="nowrap desktop-only">${sizeHtml}</td>
+          <td class="nowrap desktop-only">${timeHtml}</td>
+          <td class="desktop-only"><div class="actions">${actions}</div></td>
+        </tr>`;
+                }).join('');
+                el.tbody.innerHTML = rows;
+            }
+
+            function escapeHtml(str) {
+                return String(str).replace(/[&<>"]/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[s]));
+            }
+
+            async function uploadFiles(fileList) {
+                if (!fileList || !fileList.length) return;
+                if (!state.supportsPut) { setStatus('服务端不支持上传（PUT）', 'error'); return; }
+                for (const file of fileList) {
+                    const targetPath = joinPath(state.basePath, file.name);
+                    setStatus(`上传中：${file.name}`);
+                    try {
+                        const res = await fetch(encodePath(targetPath), {
+                            method: 'PUT',
+                            headers: { 'Content-Type': file.type || 'application/octet-stream', 'Overwrite': 'T' },
+                            body: file,
+                            credentials: 'include',
+                        });
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        setStatus(`上传完成：${file.name}`, 'success');
+                    } catch (e) {
+                        console.error(e);
+                        setStatus(`上传失败：${file.name}（${e.message}）`, 'error');
+                    }
+                }
+                await refresh();
+            }
+
+            function promptRename(originalHref) {
+                const currentName = decodeURIComponent(originalHref.split('/').filter(Boolean).pop() || '');
+                const row = Array.from(el.tbody.querySelectorAll('button[data-href]')).find(b => b.getAttribute('data-href') === originalHref)?.closest('tr');
+                if (!row) return;
+                const cell = row.children[0];
+                const isDir = originalHref.endsWith('/');
+                const temp = document.createElement('div');
+                temp.className = 'inline-form';
+                temp.innerHTML = `
+        <input type="text" value="${escapeHtml(currentName)}" aria-label="新名称" />
+        <button data-act="ok">确定</button>
+        <button data-act="cancel">取消</button>
+      `;
+                const original = cell.innerHTML;
+                cell.innerHTML = '';
+                cell.appendChild(temp);
+                const input = temp.querySelector('input');
+                temp.querySelector('[data-act="cancel"]').onclick = () => { cell.innerHTML = original; };
+                temp.querySelector('[data-act="ok"]').onclick = async () => {
+                    const newName = input.value.trim();
+                    if (!newName || newName === currentName) { cell.innerHTML = original; return; }
+                    try {
+                        await renameItem(originalHref, newName, isDir);
+                        setStatus('重命名成功', 'success');
+                        await refresh();
+                    } catch (e) {
+                        console.error(e);
+                        setStatus('重命名失败：' + e.message, 'error');
+                        cell.innerHTML = original;
+                    }
+                };
+                input.focus();
+                input.select();
+            }
+
+            async function renameItem(originalHref, newName, isDir) {
+                if (!(state.supportsMove)) throw new Error('服务端不支持重命名（MOVE）');
+                const destPath = joinPath(state.basePath, newName) + (isDir && !newName.endsWith('/') ? '/' : '');
+                const res = await fetch(originalHref, {
+                    method: 'MOVE',
+                    headers: {
+                        'Destination': state.origin + encodePath(destPath),
+                        'Overwrite': 'T',
+                    },
+                    credentials: 'include',
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+            }
+
+            async function deleteItem(targetHref) {
+                if (!(state.supportsDelete)) throw new Error('服务端不支持删除（DELETE）');
+                const res = await fetch(targetHref, { method: 'DELETE', credentials: 'include' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+            }
+
+            // Events
+            el.refreshBtn.addEventListener('click', refresh);
+            el.fileInput.addEventListener('change', (e) => uploadFiles(e.target.files));
+            el.dropzone.addEventListener('dragover', (e) => { e.preventDefault(); el.dropzone.classList.add('dragover'); });
+            el.dropzone.addEventListener('dragleave', () => el.dropzone.classList.remove('dragover'));
+            el.dropzone.addEventListener('drop', (e) => {
+                e.preventDefault(); el.dropzone.classList.remove('dragover');
+                const files = e.dataTransfer?.files; uploadFiles(files);
+            });
+
+            el.tbody.addEventListener('click', async (e) => {
+                const t = e.target;
+                if (!(t instanceof HTMLElement)) return;
+                const action = t.getAttribute('data-action');
+                const href = t.getAttribute('data-href');
+                // 拦截名称列中的目录链接
+                if (!action && t.tagName === 'A') {
+                    const a = t;
+                    const ahref = a.getAttribute('href') || '';
+                    if (ahref.endsWith('/')) {
+                        e.preventDefault();
+                        navigateTo(ahref);
+                        return;
+                    }
+                }
+                if (!action || !href) return;
+                if (action === 'enter') {
+                    e.preventDefault();
+                    navigateTo(href);
+                } else if (action === 'view') {
+                    e.preventDefault();
+                    const name = t.getAttribute('data-name') || href.split('/').pop() || '';
+                    openViewer(href, name);
+                } else if (action === 'rename') {
+                    promptRename(href);
+                } else if (action === 'delete') {
+                    const name = decodeURIComponent(href.split('/').filter(Boolean).pop() || href);
+                    if (!confirm(`确认删除：${name} ？`)) return;
+                    try {
+                        setStatus('删除中...');
+                        await deleteItem(href);
+                        setStatus('删除成功', 'success');
+                        await refresh();
+                    } catch (err) {
+                        console.error(err);
+                        setStatus('删除失败：' + err.message, 'error');
+                    }
+                }
+            });
+
+            function navigateTo(dirHref) {
+                const url = new URL(dirHref, state.origin);
+                const pathname = url.pathname.endsWith('/') ? url.pathname : url.pathname + '/';
+                state.currentPathname = pathname;
+                state.basePath = pathname;
+                history.pushState({ path: pathname }, '', pathname);
+                renderBreadcrumbs();
+                refresh();
+            }
+
+            window.addEventListener('popstate', () => {
+                const pathname = computeBasePath(location.pathname);
+                state.currentPathname = pathname;
+                state.basePath = pathname;
+                renderBreadcrumbs();
+                refresh();
+            });
+
+            // --- Viewer ---
+            const overlay = document.getElementById('viewer-overlay');
+            const pre = document.getElementById('viewer-pre');
+            const htmlView = document.getElementById('viewer-html');
+            const imgWrap = document.getElementById('viewer-img-wrap');
+            const imgEl = document.getElementById('viewer-img');
+            const title = document.getElementById('viewer-title');
+            const hint = document.getElementById('viewer-hint');
+            const openRaw = document.getElementById('viewer-open-raw');
+            const toggleBtn = document.getElementById('viewer-toggle');
+            document.getElementById('viewer-close').addEventListener('click', () => overlay.classList.add('hidden'));
+            window.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.classList.add('hidden'); });
+
+            const PREVIEW_MAX_BYTES = 512 * 1024; // 512KB
+            async function openViewer(href, name) {
+                title.textContent = name;
+                openRaw.setAttribute('href', href);
+                pre.textContent = '加载中...';
+                htmlView.style.display = 'none';
+                imgWrap.style.display = 'none';
+                pre.style.display = 'block';
+                toggleBtn.classList.add('hidden');
+                hint.textContent = '';
+                overlay.classList.remove('hidden');
+
+                try {
+                    let size = null;
+                    try {
+                        const head = await fetch(href, { method: 'HEAD', credentials: 'include' });
+                        if (head.ok) {
+                            const len = head.headers.get('Content-Length');
+                            if (len) size = Number(len);
+                        }
+                    } catch { }
+
+                    let response, truncated = false;
+                    if (size != null && size > PREVIEW_MAX_BYTES) {
+                        response = await fetch(href, { method: 'GET', headers: { 'Range': `bytes=0-${PREVIEW_MAX_BYTES - 1}` }, credentials: 'include' });
+                        truncated = true;
+                    } else {
+                        response = await fetch(href, { method: 'GET', credentials: 'include' });
+                    }
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    // 图片文件直接展示图片
+                    if (isImageFile(name)) {
+                        imgEl.src = href;
+                        imgWrap.style.display = 'block';
+                        pre.style.display = 'none';
+                        return;
+                    }
+
+                    const text = await response.text();
+                    pre.textContent = text;
+                    // 如果是 Markdown，转换并展示 HTML 视图
+                    if (name.toLowerCase().endsWith('.md')) {
+                        // 尝试在限定时间内加载外部库；超时则直接使用内置渲染
+                        await ensureMarkdownLibsWithTimeout(2000);
+                        const canUseAdvanced = !!(window.marked && window.DOMPurify);
+                        try {
+                            const html = canUseAdvanced ? renderMarkdownAdvanced(text, href) : renderMarkdownToHtml(text);
+                            htmlView.innerHTML = html;
+                            rewriteRelativeLinks(htmlView, href);
+                        } catch {
+                            htmlView.innerHTML = renderMarkdownToHtml(text);
+                        }
+                        htmlView.style.display = 'block';
+                        pre.style.display = 'none';
+                        toggleBtn.textContent = '源码';
+                        toggleBtn.classList.remove('hidden');
+                        toggleBtn.onclick = () => {
+                            const showHtml = htmlView.style.display !== 'none';
+                            if (showHtml) {
+                                htmlView.style.display = 'none';
+                                pre.style.display = 'block';
+                                toggleBtn.textContent = '渲染';
+                            } else {
+                                htmlView.style.display = 'block';
+                                pre.style.display = 'none';
+                                toggleBtn.textContent = '源码';
+                            }
+                        };
+                        // 数学公式渲染（若 MathJax 可用）
+                        if (window.MathJax && window.MathJax.typesetPromise) {
+                            try { await window.MathJax.typesetPromise([htmlView]); } catch { }
+                        }
+                    }
+                    if (truncated) {
+                        hint.textContent = `仅预览前 ${Math.round(PREVIEW_MAX_BYTES / 1024)}KB，点击“下载”查看完整内容。`;
+                    }
+                } catch (err) {
+                    pre.textContent = `加载失败：${err && err.message ? err.message : String(err)}`;
+                }
+            }
+
+            // 从 CDN 动态加载 marked、DOMPurify、MathJax，失败不抛出致命错误
+            let markdownLibsPromise = null;
+            function ensureMarkdownLibs() {
+                if (markdownLibsPromise) return markdownLibsPromise;
+                markdownLibsPromise = new Promise(async (resolve) => {
+                    try {
+                        const tasks = [];
+                        if (!window.marked) tasks.push(loadScript('https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js'));
+                        if (!window.DOMPurify) tasks.push(loadScript('https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js'));
+                        // MathJax 配置需在脚本前
+                        if (!window.MathJax) {
+                            window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] }, svg: { fontCache: 'global' } };
+                            tasks.push(loadScript('https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js'));
+                        }
+                        await Promise.all(tasks);
+                    } catch (e) {
+                        // 忽略加载失败，继续使用降级渲染
+                    }
+                    resolve();
+                });
+                return markdownLibsPromise;
+            }
+
+            function ensureMarkdownLibsWithTimeout(ms) {
+                return Promise.race([
+                    ensureMarkdownLibs(),
+                    new Promise(resolve => setTimeout(resolve, ms))
+                ]);
+            }
+
+            function loadScript(src) {
+                return new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.async = true;
+                    s.onload = () => resolve();
+                    s.onerror = () => reject(new Error('load failed: ' + src));
+                    document.head.appendChild(s);
+                });
+            }
+
+            function renderMarkdownAdvanced(md, hrefBase) {
+                try {
+                    const markedOpts = { gfm: true, breaks: true, mangle: false, headerIds: true }; // GFM 支持表格/任务列表/换行
+                    const rawHtml = window.marked.parse(md, markedOpts);
+                    const clean = window.DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
+                    return clean;
+                } catch (e) {
+                    return renderMarkdownToHtml(md);
+                }
+            }
+
+            function rewriteRelativeLinks(container, baseHref) {
+                const base = new URL(baseHref, state.origin);
+                container.querySelectorAll('a[href]').forEach(a => {
+                    const href = a.getAttribute('href') || '';
+                    if (/^(?:[a-z]+:)?\/\//i.test(href) || href.startsWith('#') || href.startsWith('/')) return;
+                    try { a.href = new URL(href, base).href; } catch { }
+                });
+                container.querySelectorAll('img[src]').forEach(img => {
+                    const src = img.getAttribute('src') || '';
+                    if (/^(?:[a-z]+:)?\/\//i.test(src) || src.startsWith('/')) return;
+                    try { img.src = new URL(src, base).href; } catch { }
+                });
+            }
+
+            function renderMarkdownToHtml(md) {
+                // 极简 Markdown 渲染（标题、粗体斜体、代码块、行内代码、链接、列表、换行），不支持 HTML 注入
+                let text = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                // 代码块 ```
+                text = text.replace(/```([\s\S]*?)```/g, (m, p1) => `<pre><code>${p1.replace(/\n$/, '')}</code></pre>`);
+                // 标题 #
+                text = text.replace(/^######\s+(.*)$/gm, '<h6>$1</h6>')
+                    .replace(/^#####\s+(.*)$/gm, '<h5>$1</h5>')
+                    .replace(/^####\s+(.*)$/gm, '<h4>$1</h4>')
+                    .replace(/^###\s+(.*)$/gm, '<h3>$1</h3>')
+                    .replace(/^##\s+(.*)$/gm, '<h2>$1</h2>')
+                    .replace(/^#\s+(.*)$/gm, '<h1>$1</h1>');
+                // 列表 - 或 *
+                text = text.replace(/^(\s*)([-*])\s+(.*)$/gm, '$1<li>$3</li>');
+                text = text.replace(/(?:^(?:<li>.*<\/li>)(?:\n|$))+?/gm, (block) => `<ul>${block.replace(/\n/g, '')}</ul>`);
+                // 粗体/斜体
+                text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+                // 行内代码
+                text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+                // 链接 [text](url)
+                text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+                // 段落和换行
+                const lines = text.split(/\n\n+/).map(p => {
+                    if (/^<h\d|^<pre|^<ul|^<li|^<blockquote/.test(p)) return p;
+                    return `<p>${p.replace(/\n/g, '<br/>')}</p>`;
+                });
+                return lines.join('\n');
+            }
+
+            el.path.addEventListener('click', (e) => {
+                const t = e.target;
+                if (!(t instanceof HTMLElement)) return;
+                if (t.tagName === 'A' && t.getAttribute('data-action') === 'crumb') {
+                    e.preventDefault();
+                    const href = t.getAttribute('data-href');
+                    if (!href) return;
+                    navigateTo(href);
+                }
+            });
+
+            // Initial
+            refresh();
+        })();
+    </script>
+</body>
+
+</html>
