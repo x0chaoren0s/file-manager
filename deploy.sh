@@ -54,12 +54,21 @@ CONF_DIR=${CONF_DIR:-$DEFAULT_CONF_DIR}
 
 echo -e "\n${BLUE}正在执行部署...${NC}"
 
-# 1. 检查并安装依赖 (对于宝塔用户，通常已经安装了 Nginx)
-if ! command -v nginx >/dev/null 2>&1; then
-    echo -e "未发现 Nginx，正在尝试安装..."
+# 1. 检查并安装依赖 (适配针对 Debian 系统路径和宝塔路径)
+NGINX_BIN_PATH=""
+for path in "/usr/sbin/nginx" "/usr/local/nginx/sbin/nginx" "/www/server/nginx/sbin/nginx"; do
+    if [ -x "$path" ]; then
+        NGINX_BIN_PATH="$path"
+        break
+    fi
+done
+
+if [ -z "$NGINX_BIN_PATH" ] && ! command -v nginx >/dev/null 2>&1; then
+    echo -e "未通过常规路径发现 Nginx，正在尝试安装 nginx-extras..."
     sudo apt update && sudo apt install -y nginx-extras
 else
-    echo -e "发现已存在的 Nginx，请确保其已编译 WebDAV 支持模块 (如 dav_ext)。"
+    [ -z "$NGINX_BIN_PATH" ] && NGINX_BIN_PATH=$(command -v nginx)
+    echo -e "发现已存在的 Nginx (${BLUE}$NGINX_BIN_PATH${NC})，请确保其已编译 WebDAV 支持模块 (如 dav_ext)。"
 fi
 
 # 2. 准备 Web 目录
