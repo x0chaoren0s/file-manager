@@ -37,6 +37,20 @@ PORT=${PORT:-$DEFAULT_PORT}
 read -p "请输入域名/IP (默认 $DEFAULT_DOMAIN): " DOMAIN
 DOMAIN=${DOMAIN:-$DEFAULT_DOMAIN}
 
+read -p "是否开启 HTTPS? (y/n, 默认 n): " ENABLE_SSL
+ENABLE_SSL=${ENABLE_SSL:-n}
+
+SSL_CERT_PATH=""
+SSL_KEY_PATH=""
+if [[ "$ENABLE_SSL" == "y" ]]; then
+    read -p "请输入 SSL 证书路径 (CRT/PEM): " SSL_CERT_PATH
+    read -p "请输入 SSL 私钥路径 (KEY): " SSL_KEY_PATH
+    if [[ ! -f "$SSL_CERT_PATH" ]] || [[ ! -f "$SSL_KEY_PATH" ]]; then
+        echo -e "${RED}警告: 证书或私钥文件路径无效，将转为仅 HTTP 部署。${NC}"
+        ENABLE_SSL="n"
+    fi
+fi
+
 read -p "请输入访问子路径 (如 / 或 /files, 默认 $DEFAULT_SUBPATH): " SUBPATH
 SUBPATH=${SUBPATH:-$DEFAULT_SUBPATH}
 [[ $SUBPATH != /* ]] && SUBPATH="/$SUBPATH"
@@ -115,14 +129,42 @@ else
     }"
 fi
 
-cat <<EOF | sudo tee $CONF_PATH > /dev/null
+# 生成完整的 Server 块
+NGINX_CONF_CONTENT=""
+if [[ "$ENABLE_SSL" == "y" ]]; then
+    NGINX_CONF_CONTENT="server {
+    listen $PORT;
+    server_name $DOMAIN;
+    # 强制跳转 HTTPS
+    return 301 https://\$host\$request_uri;
+}
+
 server {
+    listen 443 ssl;
+    server_name $DOMAIN;
+
+    ssl_certificate $SSL_CERT_PATH;
+    ssl_certificate_key $SSL_KEY_PATH;
+
+    # SSL 优化
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    $LOCATION_BLOCK
+    access_log /var/log/nginx/file-manager-access.log;
+    error_log /var/log/nginx/file-manager-error.log;
+}"
+else
+    NGINX_CONF_CONTENT="server {
     listen $PORT;
     server_name $DOMAIN;
 
     $LOCATION_BLOCK
-}
-EOF
+}"
+fi
+
+echo "$NGINX_CONF_CONTENT" | sudo tee $CONF_PATH > /dev/null
 
 # 4. 启用配置 (如果不是宝塔的 vhost 目录，通常需要软链接)
 if [[ "$CONF_DIR" == *"/sites-available"* ]]; then
@@ -141,9 +183,14 @@ if sudo nginx -t; then
         sudo nginx -s reload
     fi
     echo -e "${GREEN}部署成功!${NC}"
-    echo -e "访问地址: ${BLUE}http://$DOMAIN:$PORT$SUBPATH${NC}"
+    if [[ "$ENABLE_SSL" == "y" ]]; then
+        echo -e "访问地址: ${BLUE}https://$DOMAIN$SUBPATH${NC}"
+    else
+        echo -e "访问地址: ${BLUE}http://$DOMAIN:$PORT$SUBPATH${NC}"
+    fi
 else
     echo -e "${RED}Nginx 配置验证失败，可能是当前环境 Nginx 不支持 WebDAV 扩展模块（dav_ext）。${NC}"
     echo -e "${RED}如果使用宝塔面板，请通过面板安装 Nginx 时选择“编译安装”并自定义添加 dav-ext 模块，或者注掉配置文件中的 dav_ext_methods 行。${NC}"
 fi
+
 
