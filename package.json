@@ -1,0 +1,25 @@
+{
+  "name": "file-manager",
+  "version": "1.0.0",
+  "description": "这是一个轻量级、响应式的单文件 Web 浏览器端文件管理器。它旨在通过 WebDAV 协议或解析 HTTP 目录索引来管理远程服务器上的文件。",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/x0chaoren0s/file-manager.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/x0chaoren0s/file-manager/issues"
+  },
+  "homepage": "https://github.com/x0chaoren0s/file-manager#readme",
+  "devDependencies": {
+    "vite": "^7.3.1",
+    "vite-plugin-singlefile": "^2.3.0"
+  }
+}

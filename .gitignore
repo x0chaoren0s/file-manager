@@ -11,3 +11,11 @@ walkthrough.md
 
 # Logs
 *.log
+
+# Node & Build
+node_modules/
+dist/
+package-lock.json
+
+# Temporary
+tmp.py
