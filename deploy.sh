@@ -9,8 +9,8 @@ DEFAULT_PORT=80
 DEFAULT_DOMAIN="localhost"
 DEFAULT_SUBPATH="/"
 
-# 自动检测 Nginx 用户 (尝试检测 common 位置，否则默认 www)
-if [ -f "/www/server/panel/vhost/nginx/" ]; then
+# 自动检测 Nginx 用户 (尝试检测常见位置，支持宝塔环境)
+if [ -d "/www/server/panel/vhost/nginx" ] || sudo [ -d "/www/server/panel/vhost/nginx" ] 2>/dev/null; then
     # 宝塔环境
     DEFAULT_WEB_ROOT="/www/wwwroot/file-manager"
     DEFAULT_NGINX_USER="www"
