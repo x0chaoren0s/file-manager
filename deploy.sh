@@ -8,7 +8,19 @@
 DEFAULT_PORT=80
 DEFAULT_DOMAIN="localhost"
 DEFAULT_SUBPATH="/"
-DEFAULT_WEB_ROOT="/var/www/html/file-manager"
+
+# 自动检测 Nginx 用户 (尝试检测 common 位置，否则默认 www)
+if [ -f "/www/server/panel/vhost/nginx/" ]; then
+    # 宝塔环境
+    DEFAULT_WEB_ROOT="/www/wwwroot/file-manager"
+    DEFAULT_NGINX_USER="www"
+    DEFAULT_CONF_DIR="/www/server/panel/vhost/nginx"
+else
+    # 标准环境
+    DEFAULT_WEB_ROOT="/var/www/html/file-manager"
+    DEFAULT_NGINX_USER="www-data"
+    DEFAULT_CONF_DIR="/etc/nginx/sites-available"
+fi
 
 # 颜色定义
 RED='\033[0;31m'
@@ -16,7 +28,7 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}=== 文件管理器一键部署工具 ===${NC}"
+echo -e "${BLUE}=== 文件管理器一键部署工具 (支持宝塔/标准环境) ===${NC}"
 
 # 获取参数
 read -p "请输入服务端口 (默认 $DEFAULT_PORT): " PORT
@@ -27,7 +39,6 @@ DOMAIN=${DOMAIN:-$DEFAULT_DOMAIN}
 
 read -p "请输入访问子路径 (如 / 或 /files, 默认 $DEFAULT_SUBPATH): " SUBPATH
 SUBPATH=${SUBPATH:-$DEFAULT_SUBPATH}
-# 确保以 / 开头和结尾
 [[ $SUBPATH != /* ]] && SUBPATH="/$SUBPATH"
 # 取消强制添加末尾斜杠，让 Nginx 能够匹配不带斜杠的请求并处理重定向
 [[ $SUBPATH == */ ]] && [[ $SUBPATH != / ]] && SUBPATH="${SUBPATH%/}"
@@ -35,12 +46,20 @@ SUBPATH=${SUBPATH:-$DEFAULT_SUBPATH}
 read -p "请输入部署目标目录 (默认 $DEFAULT_WEB_ROOT): " WEB_ROOT
 WEB_ROOT=${WEB_ROOT:-$DEFAULT_WEB_ROOT}
 
+read -p "请输入 Nginx 运行用户 (默认 $DEFAULT_NGINX_USER): " NGINX_USER
+NGINX_USER=${NGINX_USER:-$DEFAULT_NGINX_USER}
+
+read -p "请输入 Nginx 配置存放目录 (默认 $DEFAULT_CONF_DIR): " CONF_DIR
+CONF_DIR=${CONF_DIR:-$DEFAULT_CONF_DIR}
+
 echo -e "\n${BLUE}正在执行部署...${NC}"
 
-# 1. 检查并安装依赖
-if ! dpkg -s nginx-extras >/dev/null 2>&1; then
-    echo -e "正在安装 nginx-extras..."
+# 1. 检查并安装依赖 (对于宝塔用户，通常已经安装了 Nginx)
+if ! command -v nginx >/dev/null 2>&1; then
+    echo -e "未发现 Nginx，正在尝试安装..."
     sudo apt update && sudo apt install -y nginx-extras
+else
+    echo -e "发现已存在的 Nginx，请确保其已编译 WebDAV 支持模块 (如 dav_ext)。"
 fi
 
 # 2. 准备 Web 目录
@@ -49,21 +68,19 @@ sudo mkdir -p "$WEB_ROOT"
 if [ -d "dist" ]; then
     sudo cp -r dist/* "$WEB_ROOT/"
 else
-    echo -e "${RED}错误: 未找到 dist 目录。请先运行 npm run build${NC}"
+    echo -e "${RED}错误: 未找到 dist 目录。请在本地运行 npm run build 后再将项目整体同步到服务器。${NC}"
     exit 1
 fi
-sudo chown -R www-data:www-data "$WEB_ROOT"
+sudo chown -R "$NGINX_USER:$NGINX_USER" "$WEB_ROOT"
 
 # 3. 生成 Nginx 配置
-CONF_PATH="/etc/nginx/sites-available/file-manager-auto.conf"
-LINK_PATH="/etc/nginx/sites-enabled/file-manager-auto.conf"
+CONF_FILE_NAME="file-manager-$PORT.conf"
+CONF_PATH="$CONF_DIR/$CONF_FILE_NAME"
 
 echo -e "生成 Nginx 配置: $CONF_PATH"
 
-# 确定 location 逻辑
-# 如果是根路径使用 root，如果是子路径建议使用 alias
 LOCATION_BLOCK=""
-if [ "$SUBPATH" == "/" ]; then
+if [ "$SUBPATH" == "/" ] || [ "$SUBPATH" == "" ]; then
     LOCATION_BLOCK="location / {
         root $WEB_ROOT;
         index index.html;
@@ -72,7 +89,7 @@ if [ "$SUBPATH" == "/" ]; then
         dav_methods PUT DELETE MKCOL COPY MOVE;
         dav_ext_methods PROPFIND OPTIONS;
         create_full_put_path on;
-        dav_access group:rw all:r;
+        dav_access user:rw group:rw all:r;
         client_max_body_size 1024m;
     }"
 else
@@ -84,7 +101,7 @@ else
         dav_methods PUT DELETE MKCOL COPY MOVE;
         dav_ext_methods PROPFIND OPTIONS;
         create_full_put_path on;
-        dav_access group:rw all:r;
+        dav_access user:rw group:rw all:r;
         client_max_body_size 1024m;
     }"
 fi
@@ -98,15 +115,26 @@ server {
 }
 EOF
 
-# 4. 启用配置
-sudo ln -sf "$CONF_PATH" "$LINK_PATH"
+# 4. 启用配置 (如果不是宝塔的 vhost 目录，通常需要软链接)
+if [[ "$CONF_DIR" == *"/sites-available"* ]]; then
+    LINK_PATH="${CONF_DIR/sites-available/sites-enabled}/$CONF_FILE_NAME"
+    echo -e "创建软链接至 $LINK_PATH"
+    sudo ln -sf "$CONF_PATH" "$LINK_PATH"
+fi
 
 # 5. 重启 Nginx
-echo -e "验证并重启 Nginx..."
+echo -e "验证并重新加载 Nginx..."
 if sudo nginx -t; then
-    sudo systemctl reload nginx
+    # 尝试多种 reload 方式
+    if command -v systemctl >/dev/null 2>&1; then
+        sudo systemctl reload nginx || sudo service nginx reload
+    else
+        sudo nginx -s reload
+    fi
     echo -e "${GREEN}部署成功!${NC}"
     echo -e "访问地址: ${BLUE}http://$DOMAIN:$PORT$SUBPATH${NC}"
 else
-    echo -e "${RED}Nginx 配置验证失败，请检查配置。${NC}"
+    echo -e "${RED}Nginx 配置验证失败，可能是当前环境 Nginx 不支持 WebDAV 扩展模块（dav_ext）。${NC}"
+    echo -e "${RED}如果使用宝塔面板，请通过面板安装 Nginx 时选择“编译安装”并自定义添加 dav-ext 模块，或者注掉配置文件中的 dav_ext_methods 行。${NC}"
 fi
+
