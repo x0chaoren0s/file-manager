@@ -97,7 +97,25 @@ fi
 sudo chown -R "$NGINX_USER:$NGINX_USER" "$WEB_ROOT"
 
 # 3. 生成 Nginx 配置
-CONF_FILE_NAME="file-manager-$PORT.conf"
+# 智能处理端口逻辑
+SSL_PORT=443
+HTTP_PORT=80
+REAL_PORT=$PORT
+
+# 清理旧的同类配置避免冲突
+echo -e "清理旧的 Nginx 冲突配置..."
+sudo rm -f "$CONF_DIR/file-manager-*.conf"
+if [[ "$CONF_DIR" == *"/sites-available"* ]]; then
+    sudo rm -f "${CONF_DIR/sites-available/sites-enabled}/file-manager-*.conf"
+fi
+
+if [[ "$ENABLE_SSL" == "y" ]]; then
+    if [ "$PORT" == "80" ]; then
+        REAL_PORT=443
+    fi
+fi
+
+CONF_FILE_NAME="file-manager-$REAL_PORT.conf"
 CONF_PATH="$CONF_DIR/$CONF_FILE_NAME"
 
 echo -e "生成 Nginx 配置: $CONF_PATH"
@@ -133,27 +151,29 @@ fi
 NGINX_CONF_CONTENT=""
 if [[ "$ENABLE_SSL" == "y" ]]; then
     NGINX_CONF_CONTENT="server {
-    listen $PORT;
+    listen $HTTP_PORT;
     server_name $DOMAIN;
     # 强制跳转 HTTPS
     return 301 https://\$host\$request_uri;
 }
 
 server {
-    listen 443 ssl;
+    listen $REAL_PORT ssl;
     server_name $DOMAIN;
 
     ssl_certificate $SSL_CERT_PATH;
     ssl_certificate_key $SSL_KEY_PATH;
 
-    # SSL 优化
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
+    # SSL 优化 (增加兼容性)
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
 
     $LOCATION_BLOCK
-    access_log /var/log/nginx/file-manager-access.log;
-    error_log /var/log/nginx/file-manager-error.log;
+    access_log /var/log/nginx/file-manager-ssl-access.log;
+    error_log /var/log/nginx/file-manager-ssl-error.log;
 }"
 else
     NGINX_CONF_CONTENT="server {
@@ -161,6 +181,8 @@ else
     server_name $DOMAIN;
 
     $LOCATION_BLOCK
+    access_log /var/log/nginx/file-manager-access.log;
+    error_log /var/log/nginx/file-manager-error.log;
 }"
 fi
 
