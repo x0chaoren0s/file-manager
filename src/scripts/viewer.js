@@ -1,10 +1,11 @@
-import { isImageFile, escapeHtml } from './utils.js';
+import { isImageFile, isVideoFile, escapeHtml } from './utils.js';
 
 const overlay = document.getElementById('viewer-overlay');
 const pre = document.getElementById('viewer-pre');
 const htmlView = document.getElementById('viewer-html');
 const imgWrap = document.getElementById('viewer-img-wrap');
 const imgEl = document.getElementById('viewer-img');
+const videoEl = document.getElementById('viewer-video');
 const title = document.getElementById('viewer-title');
 const hint = document.getElementById('viewer-hint');
 const openRaw = document.getElementById('viewer-open-raw');
@@ -161,6 +162,9 @@ export async function openViewer(href, name) {
     pre.textContent = '加载中...';
     htmlView.style.display = 'none';
     imgWrap.style.display = 'none';
+    videoEl.style.display = 'none';
+    videoEl.pause();
+    videoEl.src = '';
     pre.style.display = 'block';
     toggleBtn.classList.add('hidden');
     hint.textContent = '';
@@ -189,6 +193,14 @@ export async function openViewer(href, name) {
             imgEl.src = href;
             imgWrap.style.display = 'block';
             pre.style.display = 'none';
+            return;
+        }
+
+        if (isVideoFile(name)) {
+            videoEl.src = href;
+            videoEl.style.display = 'block';
+            pre.style.display = 'none';
+            hint.textContent = '提示：视频加载可能需要一些时间';
             return;
         }
 

@@ -39,12 +39,19 @@ export function isPreviewable(name) {
         '.yml', '.xml', '.rs', '.java', '.kt', '.swift', '.rb', '.lua', '.pl'
     ];
     if (codeExts.some(ext => n.endsWith(ext))) return true;
-    return !!n.match(/\.(png|jpe?g|gif|svg|bmp|webp)$/);
+    if (/\.(png|jpe?g|gif|svg|bmp|webp)$/.test(n)) return true;
+    if (/\.(mp4|webm|ogg|mov)$/.test(n)) return true;
+    return false;
 }
 
 export function isImageFile(name) {
     const n = String(name || '').toLowerCase();
     return /\.(png|jpe?g|gif|svg|bmp|webp)$/.test(n);
+}
+
+export function isVideoFile(name) {
+    const n = String(name || '').toLowerCase();
+    return /\.(mp4|webm|ogg|mov)$/.test(n);
 }
 
 export function isSamePath(a, b) {
