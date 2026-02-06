@@ -43,12 +43,6 @@ function findFoldRegions(text) {
     return regions;
 }
 
-lineNumsBtn.onclick = () => {
-    showLineNumbers = !showLineNumbers;
-    lineNumsBtn.classList.toggle('active', showLineNumbers);
-    renderRawContent();
-};
-
 wordWrapBtn.onclick = () => {
     enableWordWrap = !enableWordWrap;
     wordWrapBtn.classList.toggle('active', enableWordWrap);
