@@ -34,21 +34,39 @@ wordWrapBtn.onclick = () => {
     pre.classList.toggle('wrap', enableWordWrap);
 };
 
-function renderRawContent() {
-    if (!showLineNumbers) {
+function renderRawContent(highlight = false) {
+    if (!showLineNumbers && !highlight) {
         pre.textContent = currentRawText;
         pre.style.padding = '14px';
         return;
     }
     pre.style.padding = '0';
-    const lines = currentRawText.split('\n');
-    let html = '';
-    for (let i = 0; i < lines.length; i++) {
-        const content = escapeHtml(lines[i]);
-        // Use data-num for css counterpart ::before to prevent copying
-        html += `<div class="ln-row"><span class="ln-num" data-num="${i + 1}"></span><span class="ln-content">${content || ' '}</span></div>`;
+
+    let contentHtml = '';
+    if (highlight && window.hljs) {
+        try {
+            const result = window.hljs.highlightAuto(currentRawText);
+            contentHtml = result.value;
+        } catch {
+            contentHtml = escapeHtml(currentRawText);
+        }
+    } else {
+        contentHtml = escapeHtml(currentRawText);
     }
-    pre.innerHTML = html;
+
+    // Process lines. Highlight.js might have spans spanning multiple lines.
+    // We need to fix them so each ln-row is self-contained.
+    const lines = contentHtml.split('\n');
+    let finalHtml = '';
+    let openTags = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i] || ' ';
+        const rowClass = showLineNumbers ? 'ln-row' : 'ln-row no-num';
+        const numPart = showLineNumbers ? `<span class="ln-num" data-num="${i + 1}"></span>` : '';
+        finalHtml += `<div class="${rowClass}">${numPart}<span class="ln-content">${line}</span></div>`;
+    }
+    pre.innerHTML = finalHtml;
 }
 
 const PREVIEW_MAX_BYTES = 512 * 1024; // 512KB
@@ -92,9 +110,9 @@ export async function openViewer(href, name) {
 
         const text = await response.text();
         currentRawText = text;
-        renderRawContent();
 
         if (name.toLowerCase().endsWith('.md')) {
+            renderRawContent(); // Baseline
             await ensureMarkdownLibsWithTimeout(2000);
             const canUseAdvanced = !!(window.marked && window.DOMPurify);
             try {
@@ -124,13 +142,48 @@ export async function openViewer(href, name) {
             if (window.MathJax && window.MathJax.typesetPromise) {
                 try { await window.MathJax.typesetPromise([htmlView]); } catch { }
             }
+        } else {
+            // Is it code?
+            const isCode = !name.toLowerCase().endsWith('.txt') && !name.toLowerCase().endsWith('.log');
+            if (isCode) {
+                await ensureHighlightJsWithTimeout(2000);
+                renderRawContent(true);
+            } else {
+                renderRawContent(false);
+            }
         }
+
         if (truncated) {
             hint.textContent = `仅预览前 ${Math.round(PREVIEW_MAX_BYTES / 1024)}KB，点击“下载”查看完整内容。`;
         }
     } catch (err) {
         pre.textContent = `加载失败：${err && err.message ? err.message : String(err)}`;
     }
+}
+
+let highlightLibsPromise = null;
+function ensureHighlightJs() {
+    if (highlightLibsPromise) return highlightLibsPromise;
+    highlightLibsPromise = new Promise(async (resolve) => {
+        try {
+            const tasks = [];
+            if (!window.hljs) tasks.push(loadScript('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'));
+            // Load theme
+            if (!document.querySelector('link[href*="highlight.js"]')) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';
+                document.head.appendChild(link);
+            }
+            await Promise.all(tasks);
+        } catch (e) { }
+        resolve();
+    });
+    return highlightLibsPromise;
+}
+
+function ensureHighlightJsWithTimeout(ms) {
+    return Promise.race([ensureHighlightJs(), new Promise(resolve => setTimeout(resolve, ms))]);
 }
 
 let markdownLibsPromise = null;

@@ -33,8 +33,13 @@ export function normalizeHrefToPathname(href, origin) {
 
 export function isPreviewable(name) {
     const n = String(name || '').toLowerCase();
-    return n.endsWith('.txt') || n.endsWith('.log') || n.endsWith('.sh') || n.endsWith('.py') || n.endsWith('.md') ||
-        n.match(/\.(png|jpe?g|gif|svg|bmp|webp)$/);
+    const codeExts = [
+        '.txt', '.log', '.sh', '.py', '.md', '.html', '.htm', '.css', '.js', '.json',
+        '.jsx', '.ts', '.tsx', '.go', '.c', '.cpp', '.h', '.php', '.sql', '.yaml',
+        '.yml', '.xml', '.rs', '.java', '.kt', '.swift', '.rb', '.lua', '.pl'
+    ];
+    if (codeExts.some(ext => n.endsWith(ext))) return true;
+    return !!n.match(/\.(png|jpe?g|gif|svg|bmp|webp)$/);
 }
 
 export function isImageFile(name) {
