@@ -33,7 +33,7 @@ export function normalizeHrefToPathname(href, origin) {
 
 export function isPreviewable(name) {
     const n = String(name || '').toLowerCase();
-    return n.endsWith('.log') || n.endsWith('.sh') || n.endsWith('.py') || n.endsWith('.md') ||
+    return n.endsWith('.txt') || n.endsWith('.log') || n.endsWith('.sh') || n.endsWith('.py') || n.endsWith('.md') ||
         n.match(/\.(png|jpe?g|gif|svg|bmp|webp)$/);
 }
 
