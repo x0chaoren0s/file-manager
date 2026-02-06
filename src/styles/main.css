@@ -73,6 +73,13 @@ button:hover,
     background: #1a2340;
 }
 
+button.active,
+.btn.active {
+    background: #1e3a75;
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
 button.danger {
     border-color: #5c2b2b;
     color: #ffd4d4;
@@ -333,4 +340,40 @@ input[type="file"] {
 
 #viewer-overlay.hidden {
     display: none;
+}
+
+/* Viewer Line Numbers & Wrap */
+#viewer-pre {
+    position: relative;
+}
+
+#viewer-pre.wrap {
+    white-space: pre-wrap !important;
+    word-break: break-all;
+}
+
+#viewer-pre.line-numbers {
+    padding-left: 3.5rem !important;
+}
+
+.line-num-sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 3rem;
+    height: 100%;
+    padding-top: 14px;
+    /* Align with pre padding */
+    text-align: right;
+    color: #4b5e7d;
+    background: #090e1a;
+    border-right: 1px solid #25304a;
+    user-select: none;
+    font-size: 12px;
+    line-height: 1.4;
+    /* Match pre line-height */
+}
+
+#viewer-overlay .md-body {
+    user-select: text;
 }

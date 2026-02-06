@@ -11,8 +11,46 @@ const openRaw = document.getElementById('viewer-open-raw');
 const toggleBtn = document.getElementById('viewer-toggle');
 const closeBtn = document.getElementById('viewer-close');
 
+const lineNumsBtn = document.getElementById('viewer-line-numbers');
+const wordWrapBtn = document.getElementById('viewer-word-wrap');
+
 closeBtn.onclick = () => overlay.classList.add('hidden');
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.classList.add('hidden'); });
+
+// Viewer states
+let showLineNumbers = false;
+let enableWordWrap = false;
+
+lineNumsBtn.onclick = () => {
+    showLineNumbers = !showLineNumbers;
+    lineNumsBtn.classList.toggle('active', showLineNumbers);
+    pre.classList.toggle('line-numbers', showLineNumbers);
+    updateLineNumbers();
+};
+
+wordWrapBtn.onclick = () => {
+    enableWordWrap = !enableWordWrap;
+    wordWrapBtn.classList.toggle('active', enableWordWrap);
+    pre.classList.toggle('wrap', enableWordWrap);
+};
+
+function updateLineNumbers() {
+    // Remove old sidebar
+    const old = pre.querySelector('.line-num-sidebar');
+    if (old) old.remove();
+    if (!showLineNumbers) return;
+
+    const lines = pre.textContent.split('\n');
+    const count = lines.length;
+    const sidebar = document.createElement('div');
+    sidebar.className = 'line-num-sidebar';
+    let nums = '';
+    for (let i = 1; i <= count; i++) {
+        nums += i + '\n';
+    }
+    sidebar.textContent = nums;
+    pre.insertBefore(sidebar, pre.firstChild);
+}
 
 const PREVIEW_MAX_BYTES = 512 * 1024; // 512KB
 
@@ -89,6 +127,7 @@ export async function openViewer(href, name) {
         if (truncated) {
             hint.textContent = `仅预览前 ${Math.round(PREVIEW_MAX_BYTES / 1024)}KB，点击“下载”查看完整内容。`;
         }
+        updateLineNumbers();
     } catch (err) {
         pre.textContent = `加载失败：${err && err.message ? err.message : String(err)}`;
     }
