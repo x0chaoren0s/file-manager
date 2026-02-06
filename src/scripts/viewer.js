@@ -37,13 +37,16 @@ wordWrapBtn.onclick = () => {
 function renderRawContent() {
     if (!showLineNumbers) {
         pre.textContent = currentRawText;
+        pre.style.padding = '14px';
         return;
     }
+    pre.style.padding = '0';
     const lines = currentRawText.split('\n');
     let html = '';
     for (let i = 0; i < lines.length; i++) {
         const content = escapeHtml(lines[i]);
-        html += `<div class="ln-row"><span class="ln-num">${i + 1}</span><span class="ln-content">${content || ' '}</span></div>`;
+        // Use data-num for css counterpart ::before to prevent copying
+        html += `<div class="ln-row"><span class="ln-num" data-num="${i + 1}"></span><span class="ln-content">${content || ' '}</span></div>`;
     }
     pre.innerHTML = html;
 }
