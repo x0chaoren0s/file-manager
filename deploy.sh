@@ -26,7 +26,8 @@ fi
 echo -e "${BLUE}=== 文件管理器极简部署工具 ===${NC}"
 
 # 2. 交互获取核心参数
-read -p "请输入访问域名 (如 files.osaka.mangaharb.fun): " DOMAIN
+read -p "请输入访问域名 (默认 localhost): " DOMAIN
+DOMAIN=${DOMAIN:-localhost}
 read -p "是否开启 HTTPS? (y/n, 默认 n): " ENABLE_SSL
 ENABLE_SSL=${ENABLE_SSL:-n}
 
