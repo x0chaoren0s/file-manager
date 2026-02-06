@@ -81,26 +81,29 @@
                         <a id="viewer-open-raw" class="btn" target="_blank" rel="noopener" download>下载</a>
                         <button id="viewer-close" class="btn">关闭</button>
                     </div>
+                    <a id="viewer-open-raw" class="btn" target="_blank" rel="noopener" download>下载</a>
+                    <button id="viewer-close" class="btn">关闭</button>
                 </div>
-                <div style="flex:1; overflow:auto; position:relative;">
-                    <div id="viewer-img-wrap"><img id="viewer-img" alt="preview" /></div>
-                    <div id="viewer-html" class="md-body"
-                        style="display:none; padding:14px; background:#0b1020; color:#e6edf3; line-height:1.6;"></div>
-                    <pre id="viewer-pre"
-                        style="margin:0; padding:0; background:#0b1020; color:#e6edf3; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 13px; line-height: 1.6; white-space: pre;">
-                    </pre>
-                </div>
-                <div id="viewer-hint" class="hint" style="padding:8px 12px; border-top:1px solid #25304a;"></div>
             </div>
+            <div style="flex:1; overflow:auto; position:relative;">
+                <div id="viewer-img-wrap"><img id="viewer-img" alt="preview" /></div>
+                <div id="viewer-html" class="md-body"
+                    style="display:none; padding:14px; background:#0b1020; color:#e6edf3; line-height:1.6;"></div>
+                <pre id="viewer-pre"
+                    style="margin:0; padding:0; background:#0b1020; color:#e6edf3; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 13px; line-height: 1.6; white-space: pre;">
+                    </pre>
+            </div>
+            <div id="viewer-hint" class="hint" style="padding:8px 12px; border-top:1px solid #25304a;"></div>
         </div>
+    </div>
 
-        <div id="upload-zone" class="dropzone">
-            拖拽文件到此处上传，或点击上方“选择文件上传”<br />
-            <span class="hint">上传会使用 HTTP PUT 到当前目录；如需重名覆盖请确认服务端允许</span>
-        </div>
+    <div id="upload-zone" class="dropzone">
+        拖拽文件到此处上传，或点击上方“选择文件上传”<br />
+        <span class="hint">上传会使用 HTTP PUT 到当前目录；如需重名覆盖请确认服务端允许</span>
+    </div>
 
-        <p class="hint">说明：页面优先使用 WebDAV 方法（PROPFIND/PUT/MOVE/DELETE）。若服务端未启用 WebDAV，将尝试解析目录索引 HTML
-            获取列表；但重命名/删除需服务端支持相应方法。</p>
+    <p class="hint">说明：页面优先使用 WebDAV 方法（PROPFIND/PUT/MOVE/DELETE）。若服务端未启用 WebDAV，将尝试解析目录索引 HTML
+        获取列表；但重命名/删除需服务端支持相应方法。</p>
     </div>
 </body>
 
