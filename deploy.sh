@@ -29,14 +29,57 @@ echo -e "${BLUE}=== 文件管理器极简部署工具 ===${NC}"
 read -p "请输入访问域名 (如 files.osaka.mangaharb.fun): " DOMAIN
 if [ -z "$DOMAIN" ]; then echo -e "${RED}错误: 必须输入域名${NC}"; exit 1; fi
 
-read -p "是否开启 HTTPS? (y/n, 默认 n): " ENABLE_SSL
-ENABLE_SSL=${ENABLE_SSL:-n}
-
 SSL_CERT_PATH=""
 SSL_KEY_PATH=""
 if [[ "$ENABLE_SSL" == "y" ]]; then
-    read -p "请输入 SSL 证书路径 (.crt/.cer): " SSL_CERT_PATH
-    read -p "请输入 SSL 私钥路径 (.key): " SSL_KEY_PATH
+    echo -e "\n正在扫描系统中的 SSL 证书..."
+    # 定义常见证书目录
+    CERT_DIRS=("/etc/nginx/ssl" "/etc/letsencrypt/live" "$HOME/.acme.sh")
+    index=1
+    declare -A cert_map
+    
+    # 查找 crt, cer, pem 文件 (排除 acme.sh 内部的一些管理文件)
+    while IFS= read -r file; do
+        if [[ -f "$file" ]]; then
+            echo -e " [$index] $file"
+            cert_map[$index]=$file
+            ((index++))
+        fi
+    done < <(sudo find "${CERT_DIRS[@]}" -maxdepth 3 \( -name "*.crt" -o -name "*.cer" -o -name "fullchain.pem" \) 2>/dev/null | grep -v "acme.sh/ca")
+
+    if [ ${#cert_map[@]} -gt 0 ]; then
+        read -p "请选择证书编号 (直接输入路径请按回车): " CHOICE
+        if [[ -n "$CHOICE" ]] && [[ -n "${cert_map[$CHOICE]}" ]]; then
+            SSL_CERT_PATH="${cert_map[$CHOICE]}"
+            echo -e "已选择证书: ${GREEN}$SSL_CERT_PATH${NC}"
+            
+            # 自动推测私钥路径
+            BASE_DIR=$(dirname "$SSL_CERT_PATH")
+            BASE_NAME=$(basename "$SSL_CERT_PATH" | sed 's/\..*$//')
+            KEY_GUESS=""
+            for ext in ".key" ".pem"; do
+                [ -f "$BASE_DIR/$BASE_NAME$ext" ] && KEY_GUESS="$BASE_DIR/$BASE_NAME$ext" && break
+                # 特殊处理 acme.sh 结构，私钥通常在同目录下且以域名命名
+                [ -f "$BASE_DIR/$(basename $(dirname $SSL_CERT_PATH)).key" ] && KEY_GUESS="$BASE_DIR/$(basename $(dirname $SSL_CERT_PATH)).key" && break
+            done
+            
+            if [ -n "$KEY_GUESS" ]; then
+                read -p "自动匹配到私钥 $KEY_GUESS，确认使用? (y/n, 默认 y): " CONFIRM_KEY
+                CONFIRM_KEY=${CONFIRM_KEY:-y}
+                if [[ "$CONFIRM_KEY" == "y" ]]; then
+                    SSL_KEY_PATH="$KEY_GUESS"
+                fi
+            fi
+        fi
+    fi
+
+    if [ -z "$SSL_CERT_PATH" ]; then
+        read -p "请输入 SSL 证书路径 (.crt/.cer): " SSL_CERT_PATH
+    fi
+    if [ -z "$SSL_KEY_PATH" ]; then
+        read -p "请输入 SSL 私钥路径 (.key): " SSL_KEY_PATH
+    fi
+
     if [[ ! -f "$SSL_CERT_PATH" ]] || [[ ! -f "$SSL_KEY_PATH" ]]; then
         echo -e "${RED}错误: 证书或私钥文件路径无效。${NC}"
         exit 1
