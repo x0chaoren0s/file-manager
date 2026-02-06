@@ -1,4 +1,4 @@
-import { isImageFile } from './utils.js';
+import { isImageFile, escapeHtml } from './utils.js';
 
 const overlay = document.getElementById('viewer-overlay');
 const pre = document.getElementById('viewer-pre');
@@ -20,12 +20,12 @@ window.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.clas
 // Viewer states
 let showLineNumbers = false;
 let enableWordWrap = false;
+let currentRawText = '';
 
 lineNumsBtn.onclick = () => {
     showLineNumbers = !showLineNumbers;
     lineNumsBtn.classList.toggle('active', showLineNumbers);
-    pre.classList.toggle('line-numbers', showLineNumbers);
-    updateLineNumbers();
+    renderRawContent();
 };
 
 wordWrapBtn.onclick = () => {
@@ -34,22 +34,18 @@ wordWrapBtn.onclick = () => {
     pre.classList.toggle('wrap', enableWordWrap);
 };
 
-function updateLineNumbers() {
-    // Remove old sidebar
-    const old = pre.querySelector('.line-num-sidebar');
-    if (old) old.remove();
-    if (!showLineNumbers) return;
-
-    const lines = pre.textContent.split('\n');
-    const count = lines.length;
-    const sidebar = document.createElement('div');
-    sidebar.className = 'line-num-sidebar';
-    let nums = '';
-    for (let i = 1; i <= count; i++) {
-        nums += i + '\n';
+function renderRawContent() {
+    if (!showLineNumbers) {
+        pre.textContent = currentRawText;
+        return;
     }
-    sidebar.textContent = nums;
-    pre.insertBefore(sidebar, pre.firstChild);
+    const lines = currentRawText.split('\n');
+    let html = '';
+    for (let i = 0; i < lines.length; i++) {
+        const content = escapeHtml(lines[i]);
+        html += `<div class="ln-row"><span class="ln-num">${i + 1}</span><span class="ln-content">${content || ' '}</span></div>`;
+    }
+    pre.innerHTML = html;
 }
 
 const PREVIEW_MAX_BYTES = 512 * 1024; // 512KB
@@ -92,7 +88,8 @@ export async function openViewer(href, name) {
         }
 
         const text = await response.text();
-        pre.textContent = text;
+        currentRawText = text;
+        renderRawContent();
 
         if (name.toLowerCase().endsWith('.md')) {
             await ensureMarkdownLibsWithTimeout(2000);
@@ -114,6 +111,7 @@ export async function openViewer(href, name) {
                     htmlView.style.display = 'none';
                     pre.style.display = 'block';
                     toggleBtn.textContent = '渲染';
+                    renderRawContent();
                 } else {
                     htmlView.style.display = 'block';
                     pre.style.display = 'none';
@@ -127,7 +125,6 @@ export async function openViewer(href, name) {
         if (truncated) {
             hint.textContent = `仅预览前 ${Math.round(PREVIEW_MAX_BYTES / 1024)}KB，点击“下载”查看完整内容。`;
         }
-        updateLineNumbers();
     } catch (err) {
         pre.textContent = `加载失败：${err && err.message ? err.message : String(err)}`;
     }
