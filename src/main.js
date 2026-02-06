@@ -79,23 +79,64 @@ function navigateTo(dirHref) {
 async function uploadFiles(fileList) {
     if (!fileList || !fileList.length) return;
     if (!state.supportsPut) { setStatus('服务端不支持上传（PUT）', 'error'); return; }
+
+    const progContainer = document.getElementById('upload-progress-container');
+    const progBar = document.getElementById('upload-progress-bar');
+    const progFilename = document.getElementById('upload-filename');
+    const progSpeed = document.getElementById('upload-speed');
+
+    progContainer.classList.remove('hidden');
+
     for (const file of fileList) {
         const targetPath = joinPath(state.basePath, file.name);
-        setStatus(`上传中：${file.name}`);
-        try {
-            const res = await fetch(encodePath(targetPath), {
-                method: 'PUT',
-                headers: { 'Content-Type': file.type || 'application/octet-stream', 'Overwrite': 'T' },
-                body: file,
-                credentials: 'include',
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            setStatus(`上传完成：${file.name}`, 'success');
-        } catch (e) {
+        progFilename.textContent = file.name;
+        progBar.style.width = '0%';
+        progSpeed.textContent = '0 KB/s';
+        setStatus(`正在上传：${file.name}`);
+
+        await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            const startTime = Date.now();
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progBar.style.width = percent + '%';
+
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    if (elapsed > 0) {
+                        const speed = e.loaded / elapsed;
+                        progSpeed.textContent = formatBytes(speed) + '/s';
+                    }
+                }
+            };
+
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    setStatus(`上传完成：${file.name}`, 'success');
+                    resolve();
+                } else {
+                    reject(new Error(`HTTP ${xhr.status}`));
+                }
+            };
+
+            xhr.onerror = () => reject(new Error('网络错误'));
+
+            xhr.open('PUT', encodePath(targetPath), true);
+            xhr.withCredentials = true;
+            xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+            xhr.setRequestHeader('Overwrite', 'T');
+            xhr.send(file);
+        }).catch(e => {
             console.error(e);
             setStatus(`上传失败：${file.name}（${e.message}）`, 'error');
-        }
+        });
     }
+
+    setTimeout(() => {
+        progContainer.classList.add('hidden');
+    }, 1500);
+
     await refresh();
 }
 
