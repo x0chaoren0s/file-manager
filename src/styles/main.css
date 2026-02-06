@@ -384,6 +384,14 @@ input[type="file"] {
     overflow-x: hidden;
 }
 
+.ln-row.no-num .ln-num {
+    display: none;
+}
+
+.ln-row.no-num .ln-content {
+    padding-left: 14px;
+}
+
 #viewer-overlay .md-body {
     user-select: text;
 }
