@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { escapeHtml, formatBytes, formatDate, isPreviewable } from './utils.js';
+import { escapeHtml, formatBytes, formatDate, isPreviewable, getFileTypeName } from './utils.js';
 
 const el = {
     path: document.getElementById('current-path'),
@@ -51,9 +51,10 @@ export function renderTable(callbacks) {
     }
     const rows = state.items.map(item => {
         const downloadHref = item.href;
+        const typeLabel = item.isDir ? '目录' : getFileTypeName(item.name);
         const nameHtml = item.isDir
-            ? `<span class="tag">目录</span><a href="${downloadHref}" class="dir-link">${escapeHtml(item.name)}/</a>`
-            : `<span class="tag">文件</span><a href="${downloadHref}" download>${escapeHtml(item.name)}</a>`;
+            ? `<span class="tag">${typeLabel}</span><a href="${downloadHref}" class="dir-link">${escapeHtml(item.name)}/</a>`
+            : `<span class="tag">${typeLabel}</span><a href="${downloadHref}" download>${escapeHtml(item.name)}</a>`;
         const sizeHtml = item.isDir ? '-' : (item.size != null ? formatBytes(item.size) : (item.sizeRaw || '-'));
         const timeHtml = item.mtime ? formatDate(item.mtime) : (item.mtimeRaw || '-');
         const baseActions = [];

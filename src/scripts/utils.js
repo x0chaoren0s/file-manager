@@ -47,3 +47,15 @@ export function isSamePath(a, b) {
     const nb = b.endsWith('/') ? b : b + '/';
     return na === nb;
 }
+
+export function getFileTypeName(name) {
+    const n = String(name || '').toLowerCase();
+    if (n.match(/\.(png|jpe?g|gif|svg|bmp|webp)$/)) return '图片';
+    if (n.match(/\.(mp4|webm|ogg|mov|avi|mkv|flv)$/)) return '视频';
+    if (n.match(/\.(mp3|wav|flac|aac|m4a|ogg)$/)) return '音频';
+    if (n.match(/\.(html|htm|css|js|json|jsx|ts|tsx|py|sh|go|c|cpp|h|php|sql|yaml|yml|xml)$/)) return '代码';
+    if (n.match(/\.(md|markdown|txt|log|pdf|doc|docx|xls|xlsx|ppt|pptx|rtf|epub)$/)) return '文档';
+    if (n.match(/\.(zip|rar|7z|tar|gz|bz2|xz)$/)) return '压缩包';
+    if (n.match(/\.(exe|msi|deb|rpm|dmg|apk)$/)) return '程序';
+    return '文件';
+}
