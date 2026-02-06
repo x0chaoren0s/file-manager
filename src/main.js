@@ -84,6 +84,7 @@ async function uploadFiles(fileList) {
     const progBar = document.getElementById('upload-progress-bar');
     const progFilename = document.getElementById('upload-filename');
     const progSpeed = document.getElementById('upload-speed');
+    const progSize = document.getElementById('upload-size');
 
     progContainer.classList.remove('hidden');
 
@@ -92,6 +93,7 @@ async function uploadFiles(fileList) {
         progFilename.textContent = file.name;
         progBar.style.width = '0%';
         progSpeed.textContent = '0 KB/s';
+        progSize.textContent = `0B / ${formatBytes(file.size)}`;
         setStatus(`正在上传：${file.name}`);
 
         await new Promise((resolve, reject) => {
@@ -102,6 +104,7 @@ async function uploadFiles(fileList) {
                 if (e.lengthComputable) {
                     const percent = Math.round((e.loaded / e.total) * 100);
                     progBar.style.width = percent + '%';
+                    progSize.textContent = `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`;
 
                     const elapsed = (Date.now() - startTime) / 1000;
                     if (elapsed > 0) {
