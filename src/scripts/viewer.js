@@ -193,6 +193,7 @@ export async function openViewer(href, name) {
             imgEl.src = href;
             imgWrap.style.display = 'block';
             pre.style.display = 'none';
+            wordWrapBtn.classList.add('hidden');
             return;
         }
 
@@ -200,9 +201,13 @@ export async function openViewer(href, name) {
             videoEl.src = href;
             videoEl.style.display = 'block';
             pre.style.display = 'none';
+            wordWrapBtn.classList.add('hidden');
             hint.textContent = '提示：视频加载可能需要一些时间';
             return;
         }
+
+        // Text/Code preview - show word wrap button
+        wordWrapBtn.classList.remove('hidden');
 
         const text = await response.text();
         currentRawText = text;
