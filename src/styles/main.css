@@ -392,6 +392,43 @@ input[type="file"] {
     padding-left: 14px;
 }
 
+/* Folding Styles */
+.ln-fold {
+    position: absolute;
+    left: 0.5rem;
+    cursor: pointer;
+    color: #4b5e7d;
+    font-size: 10px;
+    line-height: 1.6;
+    transition: transform 0.2s;
+    user-select: none;
+    z-index: 10;
+}
+
+.ln-fold::before {
+    content: "▼";
+}
+
+.ln-row.folded .ln-fold {
+    transform: rotate(-90deg);
+}
+
+.folded-ellipsis {
+    background: #1a2340;
+    color: #4aa3ff;
+    padding: 0 4px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: 4px;
+    display: inline-block;
+    line-height: 1;
+}
+
+.folded-ellipsis:hover {
+    background: #25304a;
+}
+
 #viewer-overlay .md-body {
     user-select: text;
 }

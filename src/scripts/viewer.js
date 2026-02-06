@@ -21,6 +21,29 @@ window.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.clas
 let showLineNumbers = false;
 let enableWordWrap = false;
 let currentRawText = '';
+let foldRegions = {}; // startLine: endLine
+let foldedLines = new Set(); // Set of startLineIndices
+
+function findFoldRegions(text) {
+    const lines = text.split('\n');
+    const regions = {};
+    const stack = [];
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        for (let char of line) {
+            if (char === '{') {
+                stack.push(i);
+            } else if (char === '}') {
+                const start = stack.pop();
+                if (start !== undefined && i > start) {
+                    // If multiple {} on same lines, the outer one wins for folding
+                    if (!regions[start]) regions[start] = i;
+                }
+            }
+        }
+    }
+    return regions;
+}
 
 lineNumsBtn.onclick = () => {
     showLineNumbers = !showLineNumbers;
@@ -61,12 +84,40 @@ function renderRawContent(highlight = false) {
     let openTags = [];
 
     for (let i = 0; i < lines.length; i++) {
-        let line = lines[i] || ' ';
-        const rowClass = showLineNumbers ? 'ln-row' : 'ln-row no-num';
-        const numPart = showLineNumbers ? `<span class="ln-num" data-num="${i + 1}"></span>` : '';
-        finalHtml += `<div class="${rowClass}">${numPart}<span class="ln-content">${line}</span></div>`;
+        const isFoldStart = foldRegions[i] !== undefined;
+        const isFolded = foldedLines.has(i);
+
+        const rowClass = [
+            showLineNumbers ? 'ln-row' : 'ln-row no-num',
+            isFolded ? 'folded' : ''
+        ].join(' ').trim();
+
+        const foldBtn = isFoldStart ? `<span class="ln-fold" data-line="${i}"></span>` : '';
+        const numPart = showLineNumbers ? `<span class="ln-num" data-num="${i + 1}">${foldBtn}</span>` : '';
+
+        let lineContent = lines[i] || ' ';
+        if (isFolded) {
+            lineContent += `<span class="folded-ellipsis" data-line="${i}">...</span>`;
+        }
+
+        finalHtml += `<div class="${rowClass}">${numPart}<span class="ln-content">${lineContent}</span></div>`;
+
+        if (isFolded) {
+            i = foldRegions[i]; // Skip internal lines
+        }
     }
     pre.innerHTML = finalHtml;
+
+    // Attach events
+    pre.querySelectorAll('[data-line]').forEach(el => {
+        el.onclick = (e) => {
+            e.stopPropagation();
+            const line = parseInt(el.dataset.line);
+            if (foldedLines.has(line)) foldedLines.delete(line);
+            else foldedLines.add(line);
+            renderRawContent(highlight);
+        };
+    });
 }
 
 const PREVIEW_MAX_BYTES = 512 * 1024; // 512KB
@@ -110,6 +161,8 @@ export async function openViewer(href, name) {
 
         const text = await response.text();
         currentRawText = text;
+        foldedLines.clear();
+        foldRegions = findFoldRegions(text);
 
         if (name.toLowerCase().endsWith('.md')) {
             renderRawContent(); // Baseline
