@@ -52,8 +52,12 @@
         <div class="status" id="status"></div>
         <div id="upload-progress-container" class="hidden" style="margin: 12px 0;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px;">
-                <span id="upload-filename" class="sub">文件名</span>
-                <span id="upload-speed" class="sub">0 KB/s</span>
+                <span id="upload-filename" class="sub"
+                    style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">文件名</span>
+                <div style="display: flex; gap: 12px; margin-left: 8px;">
+                    <span id="upload-size" class="sub">0B / 0B</span>
+                    <span id="upload-speed" class="sub">0 KB/s</span>
+                </div>
             </div>
             <div
                 style="height: 8px; background: #0f1527; border-radius: 4px; overflow: hidden; border: 1px solid #25304a;">
