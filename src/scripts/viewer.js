@@ -22,24 +22,65 @@ let currentRawText = '';
 let foldRegions = {}; // startLine: endLine
 let foldedLines = new Set(); // Set of startLineIndices
 
-function findFoldRegions(text) {
+function findFoldRegions(text, filename = '') {
     const lines = text.split('\n');
     const regions = {};
-    const stack = [];
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        for (let char of line) {
-            if (char === '{') {
-                stack.push(i);
-            } else if (char === '}') {
-                const start = stack.pop();
-                if (start !== undefined && i > start) {
-                    // If multiple {} on same lines, the outer one wins for folding
-                    if (!regions[start]) regions[start] = i;
+
+    // Detect if this is a Python-like indentation-based language
+    const isPython = filename.toLowerCase().endsWith('.py');
+
+    if (isPython) {
+        // Indentation-based folding for Python
+        // Find lines ending with ':' that start blocks
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trimEnd();
+            if (!trimmed.endsWith(':')) continue;
+
+            // Calculate indentation of this line
+            const baseIndent = line.length - line.trimStart().length;
+
+            // Find where this block ends
+            let blockEnd = i;
+            for (let j = i + 1; j < lines.length; j++) {
+                const nextLine = lines[j];
+                // Skip empty lines or lines with only whitespace
+                if (nextLine.trim().length === 0) {
+                    blockEnd = j;
+                    continue;
+                }
+                const nextIndent = nextLine.length - nextLine.trimStart().length;
+                // Block ends when we find a line with same or less indentation
+                if (nextIndent <= baseIndent) {
+                    break;
+                }
+                blockEnd = j;
+            }
+
+            // Only create region if it spans multiple lines
+            if (blockEnd > i) {
+                regions[i] = blockEnd;
+            }
+        }
+    } else {
+        // Brace-based folding for most languages
+        const stack = [];
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            for (let char of line) {
+                if (char === '{') {
+                    stack.push(i);
+                } else if (char === '}') {
+                    const start = stack.pop();
+                    if (start !== undefined && i > start) {
+                        // If multiple {} on same lines, the outer one wins for folding
+                        if (!regions[start]) regions[start] = i;
+                    }
                 }
             }
         }
     }
+
     return regions;
 }
 
@@ -154,7 +195,7 @@ export async function openViewer(href, name) {
         const text = await response.text();
         currentRawText = text;
         foldedLines.clear();
-        foldRegions = findFoldRegions(text);
+        foldRegions = findFoldRegions(text, name);
 
         if (name.toLowerCase().endsWith('.md')) {
             renderRawContent(); // Baseline
