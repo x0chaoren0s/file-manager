@@ -395,34 +395,43 @@ input[type="file"] {
 /* Folding Styles */
 .ln-fold {
     position: absolute;
-    left: 0.5rem;
+    left: 4px;
+    top: 0;
+    width: 20px;
+    height: 100%;
     cursor: pointer;
     color: #4b5e7d;
-    font-size: 10px;
-    line-height: 1.6;
+    font-size: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: transform 0.2s;
     user-select: none;
-    z-index: 10;
+    z-index: 20;
 }
 
 .ln-fold::before {
-    content: "▼";
+    content: "▶";
+    /* Use triangle for clearer state */
+    display: inline-block;
+    transform: rotate(90deg);
 }
 
-.ln-row.folded .ln-fold {
-    transform: rotate(-90deg);
+.ln-row.folded .ln-fold::before {
+    transform: rotate(0deg);
 }
 
 .folded-ellipsis {
     background: #1a2340;
     color: #4aa3ff;
-    padding: 0 4px;
+    padding: 0 6px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 11px;
     cursor: pointer;
-    margin-left: 4px;
+    margin-left: 8px;
     display: inline-block;
-    line-height: 1;
+    line-height: 1.2;
+    font-weight: bold;
 }
 
 .folded-ellipsis:hover {

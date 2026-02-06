@@ -10,15 +10,13 @@ const hint = document.getElementById('viewer-hint');
 const openRaw = document.getElementById('viewer-open-raw');
 const toggleBtn = document.getElementById('viewer-toggle');
 const closeBtn = document.getElementById('viewer-close');
-
-const lineNumsBtn = document.getElementById('viewer-line-numbers');
 const wordWrapBtn = document.getElementById('viewer-word-wrap');
 
 closeBtn.onclick = () => overlay.classList.add('hidden');
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.classList.add('hidden'); });
 
 // Viewer states
-let showLineNumbers = false;
+let showLineNumbers = true;
 let enableWordWrap = false;
 let currentRawText = '';
 let foldRegions = {}; // startLine: endLine
