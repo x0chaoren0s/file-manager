@@ -362,7 +362,9 @@ input[type="file"] {
     border-right: 1px solid #25304a;
     margin-right: 12px;
     font-size: 11px;
-    pointer-events: none;
+    position: relative;
+    /* Required for .ln-fold absolute positioning */
+    /* pointer-events removed to allow .ln-fold clicks */
 }
 
 /* Use data-num to prevent copying numbers */
