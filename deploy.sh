@@ -53,30 +53,47 @@ if [[ "$ENABLE_SSL" == "y" ]]; then
         if [[ -n "$CHOICE" ]] && [[ -n "${cert_map[$CHOICE]}" ]]; then
             SSL_CERT_PATH="${cert_map[$CHOICE]}"
             echo -e "已选择证书: ${GREEN}$SSL_CERT_PATH${NC}"
-            
-            # 自动推测私钥路径
-            BASE_DIR=$(dirname "$SSL_CERT_PATH")
-            BASE_NAME=$(basename "$SSL_CERT_PATH" | sed 's/\..*$//')
-            KEY_GUESS=""
-            for ext in ".key" ".pem"; do
-                [ -f "$BASE_DIR/$BASE_NAME$ext" ] && KEY_GUESS="$BASE_DIR/$BASE_NAME$ext" && break
-                # 特殊处理 acme.sh 结构，私钥通常在同目录下且以域名命名
-                [ -f "$BASE_DIR/$(basename $(dirname $SSL_CERT_PATH)).key" ] && KEY_GUESS="$BASE_DIR/$(basename $(dirname $SSL_CERT_PATH)).key" && break
-            done
-            
-            if [ -n "$KEY_GUESS" ]; then
-                read -p "自动匹配到私钥 $KEY_GUESS，确认使用? (y/n, 默认 y): " CONFIRM_KEY
-                CONFIRM_KEY=${CONFIRM_KEY:-y}
-                if [[ "$CONFIRM_KEY" == "y" ]]; then
-                    SSL_KEY_PATH="$KEY_GUESS"
-                fi
-            fi
         fi
     fi
 
     if [ -z "$SSL_CERT_PATH" ]; then
         read -p "请输入 SSL 证书路径 (.crt/.cer): " SSL_CERT_PATH
     fi
+
+    # 扫描私钥
+    echo -e "\n正在扫描系统中的 SSL 私钥..."
+    index=1
+    declare -A key_map
+    while IFS= read -r file; do
+        if [[ -f "$file" ]]; then
+            echo -e " [$index] $file"
+            key_map[$index]=$file
+            ((index++))
+        fi
+    done < <(sudo find "${CERT_DIRS[@]}" -maxdepth 3 \( -name "*.key" -o -name "privkey.pem" \) 2>/dev/null | grep -v "acme.sh/ca")
+
+    if [ ${#key_map[@]} -gt 0 ]; then
+        # 尝试根据证书名给一个建议编号
+        SUGGEST_INDEX=""
+        CERT_BASE=$(basename "$SSL_CERT_PATH" | sed 's/\..*$//')
+        for i in "${!key_map[@]}"; do
+            if [[ "${key_map[$i]}" == *"$CERT_BASE"* ]]; then
+                SUGGEST_INDEX=$i
+                break
+            fi
+        done
+
+        PROMPT="请选择私钥编号"
+        [[ -n "$SUGGEST_INDEX" ]] && PROMPT="$PROMPT (建议 $SUGGEST_INDEX)"
+        read -p "$PROMPT (直接输入路径请按回车): " K_CHOICE
+        K_CHOICE=${K_CHOICE:-$SUGGEST_INDEX}
+        
+        if [[ -n "$K_CHOICE" ]] && [[ -n "${key_map[$K_CHOICE]}" ]]; then
+            SSL_KEY_PATH="${key_map[$K_CHOICE]}"
+            echo -e "已选择私钥: ${GREEN}$SSL_KEY_PATH${NC}"
+        fi
+    fi
+
     if [ -z "$SSL_KEY_PATH" ]; then
         read -p "请输入 SSL 私钥路径 (.key): " SSL_KEY_PATH
     fi
