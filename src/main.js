@@ -1,9 +1,8 @@
-import './styles/main.css';
 import { state, computeBasePath } from './scripts/state.js';
 import { setStatus, renderBreadcrumbs, renderTable } from './scripts/ui.js';
 import { listByJson, listByWebDAV, listByHtmlIndex, probeCapabilities } from './scripts/api.js';
 import { openViewer } from './scripts/viewer.js';
-import { joinPath, encodePath, escapeHtml } from './scripts/utils.js';
+import { joinPath, encodePath, escapeHtml, formatBytes } from './scripts/utils.js';
 
 const el = {
     refreshBtn: document.getElementById('refresh-btn'),
