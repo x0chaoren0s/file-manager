@@ -13,8 +13,16 @@ const toggleBtn = document.getElementById('viewer-toggle');
 const closeBtn = document.getElementById('viewer-close');
 const wordWrapBtn = document.getElementById('viewer-word-wrap');
 
-closeBtn.onclick = () => overlay.classList.add('hidden');
-window.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.classList.add('hidden'); });
+function closeViewer() {
+    overlay.classList.add('hidden');
+    videoEl.pause();
+    videoEl.src = ''; // 彻底卸载资源
+}
+
+closeBtn.onclick = closeViewer;
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !overlay.classList.contains('hidden')) closeViewer();
+});
 
 // Viewer states
 let showLineNumbers = true;
