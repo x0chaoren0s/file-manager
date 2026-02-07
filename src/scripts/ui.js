@@ -26,16 +26,20 @@ export function setStatus(message, type = 'info') {
 
 export function updateSelectionUI() {
     const count = state.selectedItems.size;
-    if (count > 0) {
+    const hasClipboard = state.clipboard.items.size > 0;
+
+    if (count > 0 || hasClipboard) {
         el.selectionBar.classList.add('active');
-        el.selectedCount.textContent = `已选择 ${count} 项`;
+        el.selectedCount.textContent = count > 0 ? `已选择 ${count} 项` : '';
+
+        // 当没有选中但剪贴板有内容时，隐藏批量编辑按钮，显示粘贴按钮
+        el.batchCutBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+        el.batchCopyBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+        el.batchDeleteBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+        el.pasteBtn.style.display = hasClipboard ? 'inline-flex' : 'none';
     } else {
         el.selectionBar.classList.remove('active');
     }
-
-    // 更新粘贴按钮状态
-    const hasClipboard = state.clipboard.items.size > 0;
-    el.pasteBtn.style.display = hasClipboard ? 'inline-flex' : 'none';
 }
 
 export function renderBreadcrumbs(navigateTo) {
