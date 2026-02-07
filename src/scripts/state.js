@@ -5,6 +5,7 @@ export function computeBasePath(pathname) {
 }
 
 export const state = {
+    appRoot: computeBasePath(window.location.pathname), // 记录应用启动时的根路径
     currentPathname: window.location.pathname,
     basePath: computeBasePath(window.location.pathname),
     origin: window.location.origin,

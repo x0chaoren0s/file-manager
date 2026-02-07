@@ -48,9 +48,9 @@ export function renderBreadcrumbs(navigateTo) {
 
     // root
     const rootA = document.createElement('a');
-    rootA.href = '/';
+    rootA.href = state.appRoot;
     rootA.innerHTML = '<span title="根目录">🏠</span>';
-    rootA.onclick = (e) => { e.preventDefault(); navigateTo('/'); };
+    rootA.onclick = (e) => { e.preventDefault(); navigateTo(state.appRoot); };
     el.path.appendChild(rootA);
 
     let accum = '';
