@@ -161,6 +161,12 @@ $LOCATION_BODY
         create_full_put_path on;
         dav_access user:rw group:rw all:r;
         client_max_body_size 1024m;
+
+        # 传输优化：提升公网弱网环境下的上传稳定性
+        client_body_timeout 600s;
+        client_body_buffer_size 128k;
+        send_timeout 600s;
+        keepalive_timeout 600s;
     }"
 
 if [[ "$DEPLOY_MODE" == "1" ]]; then

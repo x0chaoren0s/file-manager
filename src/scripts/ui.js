@@ -19,10 +19,11 @@ export function setStatus(message, type = 'info') {
 export function renderBreadcrumbs(navigateTo) {
     const parts = state.basePath.split('/').filter(Boolean);
     const crumbs = [];
+
     // root
     const rootA = document.createElement('a');
     rootA.href = '/';
-    rootA.textContent = '/';
+    rootA.innerHTML = '<span title="根目录">🏠</span>';
     rootA.onclick = (e) => { e.preventDefault(); navigateTo('/'); };
     crumbs.push(rootA.outerHTML);
 
@@ -31,17 +32,21 @@ export function renderBreadcrumbs(navigateTo) {
         accum += '/' + parts[i];
         const display = decodeURIComponent(parts[i]);
         const target = accum + '/';
-        const span = document.createElement('span');
-        span.className = 'muted';
-        span.textContent = '/';
+
+        const sep = document.createElement('span');
+        sep.className = 'muted';
+        sep.style.margin = '0 4px';
+        sep.textContent = '/';
+
         const a = document.createElement('a');
         a.href = target;
         a.textContent = escapeHtml(display);
         const currentTarget = target;
         a.onclick = (e) => { e.preventDefault(); navigateTo(currentTarget); };
-        crumbs.push(span.outerHTML + ' ' + a.outerHTML);
+
+        crumbs.push(sep.outerHTML + a.outerHTML);
     }
-    el.path.innerHTML = crumbs.join(' ');
+    el.path.innerHTML = crumbs.join('');
 }
 
 export function renderTable(callbacks) {
