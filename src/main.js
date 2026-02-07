@@ -89,12 +89,26 @@ async function uploadFiles(fileList) {
     progContainer.classList.remove('hidden');
 
     for (const file of fileList) {
+        // 关键调试日志：核实浏览器读取的文件信息
+        console.log(`[Upload Debug] 准备上传文件:`, {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            lastModified: file.lastModified
+        });
+
         const targetPath = joinPath(state.basePath, file.name);
         progFilename.textContent = file.name;
         progBar.style.width = '0%';
         progSpeed.textContent = '0 KB/s';
-        progSize.textContent = `0B / ${formatBytes(file.size)}`;
-        setStatus(`正在上传：${file.name}`);
+
+        const totalSizeStr = formatBytes(file.size);
+        progSize.textContent = `0B / ${totalSizeStr}`;
+        setStatus(`正在准备上传：${file.name} (${totalSizeStr})`);
+
+        if (file.size === 0) {
+            console.warn(`[Upload Warning] 文件 ${file.name} 大小为 0，可能导致上传异常。`);
+        }
 
         await new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();

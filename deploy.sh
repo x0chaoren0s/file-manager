@@ -140,12 +140,21 @@ fi
 sudo chown -R "$DEFAULT_NGINX_USER:$DEFAULT_NGINX_USER" "$WEB_ROOT"
 
 # B. 生成配置内容
-# 注意：alias 必须以 / 结尾
-LOCATION_CONTENT="    location $SUBPATH {
-        alias $WEB_ROOT/;
+# 关键：根路径使用 root，子路径使用 alias
+if [[ "$SUBPATH" == "/" ]]; then
+    LOCATION_BODY="        root $WEB_ROOT;
         index index.html;
         autoindex on;
-        autoindex_format html;
+        autoindex_format html;"
+else
+    LOCATION_BODY="        alias $WEB_ROOT/;
+        index index.html;
+        autoindex on;
+        autoindex_format html;"
+fi
+
+LOCATION_CONTENT="    location $SUBPATH {
+$LOCATION_BODY
 
         dav_methods PUT DELETE MKCOL COPY MOVE;
         dav_ext_methods PROPFIND OPTIONS;
