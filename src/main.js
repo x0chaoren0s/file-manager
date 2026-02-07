@@ -15,6 +15,18 @@ const el = {
     dropzone: document.getElementById('upload-zone'),
 };
 
+// --- 统一回调管理 (确保在所有逻辑中使用同一引用) ---
+const uiCallbacks = {
+    onNavigate: navigateTo,
+    onView: openViewer,
+    onRename: promptRename,
+    onDelete: confirmDelete,
+    onCreateDir: handleCreateDir,
+    onBatchAction: handleBatchAction,
+    onBatchDelete: handleBatchDelete,
+    onPaste: handlePaste,
+};
+
 async function refresh() {
     setStatus('正在加载列表...');
     state.selectedItems.clear(); // 刷新时重置选择
@@ -41,12 +53,7 @@ async function refresh() {
         if (!state.isDav) {
             await enrichViaHEAD(state.items);
         }
-        renderTable({
-            onNavigate: navigateTo,
-            onView: openViewer,
-            onRename: promptRename,
-            onDelete: confirmDelete
-        });
+        renderTable(uiCallbacks);
         setStatus(`已加载 ${items.length} 项`);
     } catch (err) {
         console.error(err);
@@ -145,7 +152,7 @@ function promptRename(originalHref) {
         .find(cb => cb.getAttribute('data-href') === originalHref)?.closest('tr');
     if (!row) return;
 
-    const cell = row.children[1]; // 名称列在第2列
+    const cell = row.children[1];
     const isDir = originalHref.endsWith('/');
     const temp = document.createElement('div');
     temp.className = 'inline-form';
@@ -233,12 +240,7 @@ async function handlePaste() {
 }
 
 // --- 初始化与监听 ---
-bindGlobalEvents({
-    onCreateDir: handleCreateDir,
-    onBatchAction: handleBatchAction,
-    onBatchDelete: handleBatchDelete,
-    onPaste: handlePaste,
-});
+bindGlobalEvents(uiCallbacks);
 
 el.refreshBtn.onclick = refresh;
 el.fileInput.onchange = (e) => uploadFiles(e.target.files);
