@@ -17,9 +17,21 @@
         </header>
 
         <div class="toolbar">
-            <button id="refresh-btn">刷新</button>
-            <label class="btn" for="file-input">选择文件上传</label>
-            <input id="file-input" type="file" multiple class="hidden" />
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button id="refresh-btn">刷新</button>
+                <button id="new-dir-btn">新建文件夹</button>
+                <label class="btn" for="file-input">选择文件上传</label>
+                <input id="file-input" type="file" multiple class="hidden" />
+            </div>
+            <div id="selection-bar" class="selection-bar">
+                <span id="selected-count" class="muted">已选择 0 项</span>
+                <div style="display:flex; gap:8px;">
+                    <button id="batch-cut-btn" class="btn">剪切</button>
+                    <button id="batch-copy-btn" class="btn">复制</button>
+                    <button id="batch-delete-btn" class="btn danger">删除</button>
+                    <button id="paste-btn" class="btn primary" style="display:none;">粘贴到此处</button>
+                </div>
+            </div>
         </div>
         <div class="status" id="status"></div>
         <div id="upload-progress-container" class="hidden" style="margin: 12px 0;">
@@ -43,15 +55,16 @@
             <table class="table" id="file-table">
                 <thead>
                     <tr>
+                        <th style="width: 32px; padding: 0 0 0 12px;"><input type="checkbox" id="select-all"></th>
                         <th>名称</th>
-                        <th class="nowrap">大小</th>
-                        <th class="nowrap">修改时间</th>
-                        <th>操作</th>
+                        <th class="nowrap desktop-only">大小</th>
+                        <th class="nowrap desktop-only">修改时间</th>
+                        <th class="desktop-only">操作</th>
                     </tr>
                 </thead>
                 <tbody id="file-tbody">
                     <tr>
-                        <td colspan="4" class="muted">加载中...</td>
+                        <td colspan="5" class="muted">加载中...</td>
                     </tr>
                 </tbody>
             </table>

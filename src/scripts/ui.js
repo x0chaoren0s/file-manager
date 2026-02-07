@@ -8,12 +8,34 @@ const el = {
     refreshBtn: document.getElementById('refresh-btn'),
     fileInput: document.getElementById('file-input'),
     dropzone: document.getElementById('upload-zone'),
+    selectAll: document.getElementById('select-all'),
+    selectionBar: document.getElementById('selection-bar'),
+    selectedCount: document.getElementById('selected-count'),
+    newDirBtn: document.getElementById('new-dir-btn'),
+    batchCutBtn: document.getElementById('batch-cut-btn'),
+    batchCopyBtn: document.getElementById('batch-copy-btn'),
+    batchDeleteBtn: document.getElementById('batch-delete-btn'),
+    pasteBtn: document.getElementById('paste-btn'),
 };
 
 export function setStatus(message, type = 'info') {
     if (!message) { el.status.textContent = ''; return; }
     const prefix = type === 'error' ? '错误：' : (type === 'success' ? '完成：' : '');
     el.status.textContent = prefix + message;
+}
+
+export function updateSelectionUI() {
+    const count = state.selectedItems.size;
+    if (count > 0) {
+        el.selectionBar.classList.add('active');
+        el.selectedCount.textContent = `已选择 ${count} 项`;
+    } else {
+        el.selectionBar.classList.remove('active');
+    }
+
+    // 更新粘贴按钮状态
+    const hasClipboard = state.clipboard.items.size > 0;
+    el.pasteBtn.style.display = hasClipboard ? 'inline-flex' : 'none';
 }
 
 export function renderBreadcrumbs(navigateTo) {
@@ -51,15 +73,20 @@ export function renderBreadcrumbs(navigateTo) {
 
 export function renderTable(callbacks) {
     if (!state.items.length) {
-        el.tbody.innerHTML = '<tr><td colspan="4" class="muted">空目录</td></tr>';
+        el.tbody.innerHTML = '<tr><td colspan="5" class="muted">空目录</td></tr>';
         return;
     }
     const rows = state.items.map(item => {
         const downloadHref = item.href;
+        const isSelected = state.selectedItems.has(downloadHref);
+        const isCut = state.clipboard.mode === 'move' && state.clipboard.items.has(downloadHref);
         const typeLabel = item.isDir ? '目录' : getFileTypeName(item.name);
+
+        // 渲染名称列，如果是目录则增加图标
         const nameHtml = item.isDir
             ? `<span class="tag">${typeLabel}</span><a href="${downloadHref}" class="dir-link">${escapeHtml(item.name)}/</a>`
             : `<span class="tag">${typeLabel}</span><a href="${downloadHref}" download>${escapeHtml(item.name)}</a>`;
+
         const sizeHtml = item.isDir ? '-' : (item.size != null ? formatBytes(item.size) : (item.sizeRaw || '-'));
         const timeHtml = item.mtime ? formatDate(item.mtime) : (item.mtimeRaw || '-');
         const baseActions = [];
@@ -79,7 +106,8 @@ export function renderTable(callbacks) {
             baseActions.push(`<button class="btn danger action-delete" data-href="${downloadHref}">删除</button>`);
         }
         const actions = baseActions.join(' ');
-        return `<tr>
+        return `<tr class="${isSelected ? 'selected' : ''} ${isCut ? 'is-cut' : ''}">
+      <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-href="${downloadHref}" ${isSelected ? 'checked' : ''}></td>
       <td>
         <div class="name">${nameHtml}</div>
         <div class="mobile-only">
@@ -98,6 +126,15 @@ export function renderTable(callbacks) {
     el.tbody.querySelectorAll('.dir-link').forEach(a => {
         a.onclick = (e) => { e.preventDefault(); callbacks.onNavigate(a.getAttribute('href')); };
     });
+    el.tbody.querySelectorAll('.row-checkbox').forEach(cb => {
+        cb.onchange = () => {
+            const href = cb.getAttribute('data-href');
+            if (cb.checked) state.selectedItems.add(href);
+            else state.selectedItems.delete(href);
+            renderTable(callbacks);
+            updateSelectionUI();
+        };
+    });
     el.tbody.querySelectorAll('.action-enter').forEach(b => {
         b.onclick = () => callbacks.onNavigate(b.getAttribute('data-href'));
     });
@@ -110,4 +147,22 @@ export function renderTable(callbacks) {
     el.tbody.querySelectorAll('.action-delete').forEach(b => {
         b.onclick = () => callbacks.onDelete(b.getAttribute('data-href'));
     });
+}
+
+export function bindGlobalEvents(callbacks) {
+    el.selectAll.onchange = () => {
+        if (el.selectAll.checked) {
+            state.items.forEach(it => state.selectedItems.add(it.href));
+        } else {
+            state.selectedItems.clear();
+        }
+        renderTable(callbacks);
+        updateSelectionUI();
+    };
+
+    el.newDirBtn.onclick = () => callbacks.onCreateDir();
+    el.batchCutBtn.onclick = () => { callbacks.onBatchAction('move'); state.selectedItems.clear(); renderTable(callbacks); updateSelectionUI(); };
+    el.batchCopyBtn.onclick = () => { callbacks.onBatchAction('copy'); state.selectedItems.clear(); renderTable(callbacks); updateSelectionUI(); };
+    el.batchDeleteBtn.onclick = () => callbacks.onBatchDelete();
+    el.pasteBtn.onclick = () => callbacks.onPaste();
 }

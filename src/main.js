@@ -1,41 +1,44 @@
 import './styles/main.css';
 import { state, computeBasePath } from './scripts/state.js';
-import { setStatus, renderBreadcrumbs, renderTable } from './scripts/ui.js';
-import { listByJson, listByWebDAV, listByHtmlIndex, probeCapabilities } from './scripts/api.js';
+import { setStatus, renderBreadcrumbs, renderTable, updateSelectionUI, bindGlobalEvents } from './scripts/ui.js';
+import {
+    listByJson, listByWebDAV, listByHtmlIndex, probeCapabilities,
+    createFolder, deleteItem, moveOrCopyItem
+} from './scripts/api.js';
 import { openViewer } from './scripts/viewer.js';
 import { joinPath, encodePath, escapeHtml, formatBytes } from './scripts/utils.js';
 
 const el = {
+    tbody: document.getElementById('file-tbody'),
     refreshBtn: document.getElementById('refresh-btn'),
     fileInput: document.getElementById('file-input'),
     dropzone: document.getElementById('upload-zone'),
-    tbody: document.getElementById('file-tbody'),
 };
 
 async function refresh() {
     setStatus('正在加载列表...');
-    el.tbody.innerHTML = '<tr><td colspan="4" class="muted">加载中...</td></tr>';
+    state.selectedItems.clear(); // 刷新时重置选择
+    updateSelectionUI();
+
     try {
         let items = [];
         try {
             items = await listByJson(state.basePath);
-            state.webdavCapable = false;
+            state.isDav = false;
         } catch (_jsonErr) {
             try {
                 items = await listByWebDAV(state.basePath, state.origin);
-                state.webdavCapable = true;
+                state.isDav = true;
             } catch (_davErr) {
-                state.webdavCapable = false;
+                state.isDav = false;
                 items = await listByHtmlIndex(state.basePath);
             }
         }
         state.items = items;
         const caps = await probeCapabilities(state.basePath);
-        state.supportsPut = caps.supportsPut;
-        state.supportsMove = caps.supportsMove;
-        state.supportsDelete = caps.supportsDelete;
+        Object.assign(state, caps);
 
-        if (!state.webdavCapable) {
+        if (!state.isDav) {
             await enrichViaHEAD(state.items);
         }
         renderTable({
@@ -48,7 +51,7 @@ async function refresh() {
     } catch (err) {
         console.error(err);
         setStatus(String(err && err.message || err), 'error');
-        el.tbody.innerHTML = '<tr><td colspan="4" class="muted">加载失败</td></tr>';
+        el.tbody.innerHTML = '<tr><td colspan="5" class="muted">加载失败</td></tr>';
     }
 }
 
@@ -89,148 +92,154 @@ async function uploadFiles(fileList) {
     progContainer.classList.remove('hidden');
 
     for (const file of fileList) {
-        // 关键调试日志：核实浏览器读取的文件信息
-        console.log(`[Upload Debug] 准备上传文件:`, {
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            lastModified: file.lastModified
-        });
-
         const targetPath = joinPath(state.basePath, file.name);
         progFilename.textContent = file.name;
         progBar.style.width = '0%';
-        progSpeed.textContent = '0 KB/s';
 
         const totalSizeStr = formatBytes(file.size);
         progSize.textContent = `0B / ${totalSizeStr}`;
-        setStatus(`正在准备上传：${file.name} (${totalSizeStr})`);
-
-        if (file.size === 0) {
-            console.warn(`[Upload Warning] 文件 ${file.name} 大小为 0，可能导致上传异常。`);
-        }
+        setStatus(`正在上传：${file.name}`);
 
         await new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             const startTime = Date.now();
-
             xhr.upload.onprogress = (e) => {
                 if (e.lengthComputable && e.total > 0) {
                     const percent = Math.round((e.loaded / e.total) * 100);
                     progBar.style.width = percent + '%';
                     progSize.textContent = `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`;
-
                     const elapsed = (Date.now() - startTime) / 1000;
-                    if (elapsed > 0) {
-                        const speed = e.loaded / elapsed;
-                        progSpeed.textContent = formatBytes(speed) + '/s';
-                    }
+                    if (elapsed > 0) progSpeed.textContent = formatBytes(e.loaded / elapsed) + '/s';
                 }
             };
-
-            xhr.onload = () => {
-                console.log(`上传响应：${file.name} -> HTTP ${xhr.status}`);
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    setStatus(`上传完成：${file.name}`, 'success');
-                    resolve();
-                } else {
-                    reject(new Error(`响应错误 HTTP ${xhr.status}`));
-                }
-            };
-
-            xhr.onerror = (e) => {
-                console.error('XHR 网络错误：', e);
-                reject(new Error('网络连接中断或被拒绝'));
-            };
-
+            xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? resolve() : reject(new Error(`HTTP ${xhr.status}`));
+            xhr.onerror = () => reject(new Error('网络错误'));
             xhr.open('PUT', encodePath(targetPath), true);
             xhr.withCredentials = true;
-            // 解决大文件上传可能需要的 header
             xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
             xhr.setRequestHeader('Overwrite', 'T');
-
-            console.log(`开始上传：${file.name} -> ${targetPath} (${formatBytes(file.size)})`);
             xhr.send(file);
-        }).catch(e => {
-            console.error('上传异常详情：', e);
-            setStatus(`上传异常：${file.name}（${e.message}）`, 'error');
-        });
+        }).catch(e => setStatus(`上传失败：${file.name}（${e.message}）`, 'error'));
     }
-
-    setTimeout(() => {
-        progContainer.classList.add('hidden');
-    }, 1500);
-
+    setTimeout(() => progContainer.classList.add('hidden'), 1000);
     await refresh();
+}
+
+// --- 文件夹管理交互 ---
+async function handleCreateDir() {
+    const name = prompt('请输入新文件夹名称:');
+    if (!name) return;
+    try {
+        const path = joinPath(state.basePath, name) + '/';
+        await createFolder(encodePath(path));
+        setStatus('文件夹创建成功', 'success');
+        await refresh();
+    } catch (e) {
+        setStatus('创建失败：' + e.message, 'error');
+    }
 }
 
 function promptRename(originalHref) {
     const currentName = decodeURIComponent(originalHref.split('/').filter(Boolean).pop() || '');
-    const row = Array.from(el.tbody.querySelectorAll('button[data-href]'))
-        .find(b => b.getAttribute('data-href') === originalHref)?.closest('tr');
+    const row = Array.from(el.tbody.querySelectorAll('.row-checkbox'))
+        .find(cb => cb.getAttribute('data-href') === originalHref)?.closest('tr');
     if (!row) return;
 
-    const cell = row.children[0];
+    const cell = row.children[1]; // 名称列在第2列
     const isDir = originalHref.endsWith('/');
     const temp = document.createElement('div');
     temp.className = 'inline-form';
     temp.innerHTML = `
-        <input type="text" value="${escapeHtml(currentName)}" aria-label="新名称" style="flex:1" />
+        <input type="text" value="${escapeHtml(currentName)}" style="flex:1" />
         <button class="btn ok-btn">确定</button>
         <button class="btn cancel-btn">取消</button>
     `;
-    const original = cell.innerHTML;
+    const originalContent = cell.innerHTML;
     cell.innerHTML = '';
     cell.appendChild(temp);
 
     const input = temp.querySelector('input');
-    temp.querySelector('.cancel-btn').onclick = () => { cell.innerHTML = original; };
+    temp.querySelector('.cancel-btn').onclick = () => { cell.innerHTML = originalContent; };
     temp.querySelector('.ok-btn').onclick = async () => {
         const newName = input.value.trim();
-        if (!newName || newName === currentName) { cell.innerHTML = original; return; }
+        if (!newName || newName === currentName) { cell.innerHTML = originalContent; return; }
         try {
-            await renameItem(originalHref, newName, isDir);
+            const destPath = joinPath(state.basePath, newName) + (isDir ? '/' : '');
+            await moveOrCopyItem(originalHref, encodePath(destPath), false);
             setStatus('重命名成功', 'success');
             await refresh();
         } catch (e) {
-            console.error(e);
             setStatus('重命名失败：' + e.message, 'error');
-            cell.innerHTML = original;
+            cell.innerHTML = originalContent;
         }
     };
-    input.focus();
-    input.select();
-}
-
-async function renameItem(originalHref, newName, isDir) {
-    const destPath = joinPath(state.basePath, newName) + (isDir && !newName.endsWith('/') ? '/' : '');
-    const res = await fetch(originalHref, {
-        method: 'MOVE',
-        headers: {
-            'Destination': state.origin + encodePath(destPath),
-            'Overwrite': 'T',
-        },
-        credentials: 'include',
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    input.focus(); input.select();
 }
 
 async function confirmDelete(targetHref) {
-    const name = decodeURIComponent(targetHref.split('/').filter(Boolean).pop() || targetHref);
+    const name = decodeURIComponent(targetHref.split('/').filter(Boolean).pop() || '');
     if (!confirm(`确认删除：${name} ？`)) return;
     try {
-        setStatus('删除中...');
-        const res = await fetch(targetHref, { method: 'DELETE', credentials: 'include' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        await deleteItem(targetHref);
         setStatus('删除成功', 'success');
         await refresh();
-    } catch (err) {
-        console.error(err);
-        setStatus('删除失败：' + err.message, 'error');
+    } catch (e) {
+        setStatus('删除失败：' + e.message, 'error');
     }
 }
 
-// 初始化
+// --- 批量操作 ---
+function handleBatchAction(mode) {
+    state.clipboard.mode = mode;
+    state.clipboard.items = new Set(state.selectedItems);
+    setStatus(`已${mode === 'move' ? '剪切' : '复制'} ${state.clipboard.items.size} 项，请到目标目录粘贴`, 'success');
+}
+
+async function handleBatchDelete() {
+    const count = state.selectedItems.size;
+    if (!count || !confirm(`确认批量删除已选的 ${count} 项吗？`)) return;
+    setStatus(`正在删除 ${count} 项...`);
+    let failCount = 0;
+    for (const href of state.selectedItems) {
+        try { await deleteItem(href); }
+        catch (e) { failCount++; console.error(e); }
+    }
+    setStatus(failCount ? `删除完成，但有 ${failCount} 项失败` : '批量删除成功', failCount ? 'error' : 'success');
+    state.selectedItems.clear();
+    await refresh();
+}
+
+async function handlePaste() {
+    const { mode, items } = state.clipboard;
+    if (!items.size) return;
+    setStatus(`正在${mode === 'move' ? '移动' : '复制'} ${items.size} 项...`);
+    let failCount = 0;
+    const isCopy = mode === 'copy';
+
+    for (const srcHref of items) {
+        try {
+            const name = decodeURIComponent(srcHref.split('/').filter(Boolean).pop() || '');
+            const destPath = joinPath(state.basePath, name) + (srcHref.endsWith('/') ? '/' : '');
+            await moveOrCopyItem(srcHref, encodePath(destPath), isCopy);
+        } catch (e) {
+            failCount++;
+            console.error(e);
+        }
+    }
+
+    if (mode === 'move' && !failCount) state.clipboard.items.clear();
+    setStatus(failCount ? `粘贴完成，但有 ${failCount} 项失败` : '操作全部成功', failCount ? 'error' : 'success');
+    await refresh();
+}
+
+// --- 初始化与监听 ---
+bindGlobalEvents({
+    onCreateDir: handleCreateDir,
+    onBatchAction: handleBatchAction,
+    onBatchDelete: handleBatchDelete,
+    onPaste: handlePaste,
+});
+
 el.refreshBtn.onclick = refresh;
 el.fileInput.onchange = (e) => uploadFiles(e.target.files);
 el.dropzone.ondragover = (e) => { e.preventDefault(); el.dropzone.classList.add('dragover'); };
@@ -248,6 +257,5 @@ window.onpopstate = () => {
     refresh();
 };
 
-// 启动
 renderBreadcrumbs(navigateTo);
 refresh();

@@ -10,7 +10,12 @@ export const state = {
     origin: window.location.origin,
     items: [],
     webdavCapable: true,
-    supportsPut: true, // 初始乐观猜测，refresh 中会探测
+    isDav: false,
+    supportsPut: false,
     supportsMove: false,
     supportsDelete: false,
+    supportsMkcol: false,
+    supportsCopy: false,
+    selectedItems: new Set(), // 存储 href
+    clipboard: { mode: null, items: new Set() }, // mode: 'move' | 'copy'
 };

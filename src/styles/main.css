@@ -440,6 +440,77 @@ input[type="file"] {
     background: #25304a;
 }
 
+/* 批量操作与多选样式 */
+.selection-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(30, 58, 117, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--accent);
+    padding: 10px 16px;
+    border-radius: 12px;
+    margin-top: 12px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+    position: sticky;
+    bottom: 24px;
+    z-index: 100;
+}
+
+.selection-bar.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.checkbox-cell {
+    width: 32px;
+    padding: 0 0 0 12px !important;
+}
+
+tr.selected {
+    background: rgba(74, 163, 255, 0.1);
+}
+
+tr.is-cut {
+    opacity: 0.5;
+    filter: grayscale(0.5);
+}
+
+input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+}
+
+button.primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+}
+
+button.primary:hover {
+    background: #3a8ee6;
+}
+
+@media (max-width: 640px) {
+    .selection-bar {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+        bottom: 14px;
+    }
+
+    .selection-bar div {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
 #viewer-overlay .md-body {
     user-select: text;
 }

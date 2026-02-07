@@ -104,16 +104,48 @@ export async function listByHtmlIndex(basePath) {
     return Array.from(unique.values()).sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : (a.isDir ? -1 : 1)));
 }
 
+export async function createFolder(dirPath) {
+    const res = await fetch(dirPath, { method: 'MKCOL', credentials: 'include' });
+    if (!res.ok) throw new Error('创建目录失败，HTTP ' + res.status);
+    return true;
+}
+
+export async function deleteItem(path) {
+    const res = await fetch(path, { method: 'DELETE', credentials: 'include' });
+    if (!res.ok) throw new Error('删除失败，HTTP ' + res.status);
+    return true;
+}
+
+export async function moveOrCopyItem(srcHref, destHref, isCopy = false) {
+    // WebDAV MOVE/COPY 要求 Destination 是完整的绝对 URL 或绝对路径
+    // 为了稳妥，我们直接使用完整的 URL
+    const destination = new URL(destHref, window.location.origin).href;
+    const res = await fetch(srcHref, {
+        method: isCopy ? 'COPY' : 'MOVE',
+        headers: { 'Destination': destination, 'Overwrite': 'F' }, // 不自动覆盖
+        credentials: 'include'
+    });
+    if (!res.ok) {
+        if (res.status === 412) throw new Error('目标已存在');
+        throw new Error((isCopy ? '复制' : '移动') + '失败，HTTP ' + res.status);
+    }
+    return true;
+}
+
 export async function probeCapabilities(basePath) {
     try {
         const res = await fetch(basePath, { method: 'OPTIONS', credentials: 'include' });
         const allow = (res.headers.get('Allow') || '').toUpperCase();
+        const dav = res.headers.get('DAV') || '';
         return {
             supportsPut: allow.includes('PUT'),
             supportsMove: allow.includes('MOVE'),
-            supportsDelete: allow.includes('DELETE')
+            supportsDelete: allow.includes('DELETE'),
+            supportsMkcol: allow.includes('MKCOL'),
+            supportsCopy: allow.includes('COPY'),
+            isWebDAV: dav.includes('1') || dav.includes('2')
         };
     } catch {
-        return { supportsPut: false, supportsMove: false, supportsDelete: false };
+        return { supportsPut: false, supportsMove: false, supportsDelete: false, supportsMkcol: false, supportsCopy: false, isWebDAV: false };
     }
 }
