@@ -1,3 +1,4 @@
+import './styles/main.css';
 import { state, computeBasePath } from './scripts/state.js';
 import { setStatus, renderBreadcrumbs, renderTable } from './scripts/ui.js';
 import { listByJson, listByWebDAV, listByHtmlIndex, probeCapabilities } from './scripts/api.js';
