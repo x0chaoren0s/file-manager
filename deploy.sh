@@ -26,10 +26,20 @@ fi
 echo -e "${BLUE}=== 文件管理器极简部署工具 ===${NC}"
 
 # 2. 交互获取核心参数
-read -p "请输入访问域名 (默认 localhost): " DOMAIN
+echo -e "请选择部署模式:"
+echo -e " [1] 完整配置 (生成独立的 Nginx Site 配置，含 server 块)"
+echo -e " [2] 片段配置 (生成 Location Snippet，仅包含 location 块)"
+read -p "选择模式 [1-2] (默认 1): " DEPLOY_MODE
+DEPLOY_MODE=${DEPLOY_MODE:-1}
+
+read -p "请输入访问域名 (如 osaka.mangaharb.fun, 默认 localhost): " DOMAIN
 DOMAIN=${DOMAIN:-localhost}
-read -p "是否开启 HTTPS? (y/n, 默认 n): " ENABLE_SSL
-ENABLE_SSL=${ENABLE_SSL:-n}
+
+ENABLE_SSL="n"
+if [[ "$DEPLOY_MODE" == "1" ]]; then
+    read -p "是否开启 HTTPS? (y/n, 默认 n): " ENABLE_SSL
+    ENABLE_SSL=${ENABLE_SSL:-n}
+fi
 
 SSL_CERT_PATH=""
 SSL_KEY_PATH=""
@@ -40,7 +50,7 @@ if [[ "$ENABLE_SSL" == "y" ]]; then
     index=1
     declare -A cert_map
     
-    # 查找 crt, cer, pem 文件 (排除 acme.sh 内部的一些管理文件)
+    # 查找 crt, cer, pem 文件
     while IFS= read -r file; do
         if [[ -f "$file" ]]; then
             echo -e " [$index] $file"
@@ -74,7 +84,6 @@ if [[ "$ENABLE_SSL" == "y" ]]; then
     done < <(sudo find "${CERT_DIRS[@]}" -maxdepth 3 \( -name "*.key" -o -name "privkey.pem" \) 2>/dev/null | grep -v "acme.sh/ca")
 
     if [ ${#key_map[@]} -gt 0 ]; then
-        # 尝试根据证书名给一个建议编号
         SUGGEST_INDEX=""
         CERT_BASE=$(basename "$SSL_CERT_PATH" | sed 's/\..*$//')
         for i in "${!key_map[@]}"; do
@@ -108,7 +117,6 @@ fi
 read -p "请输入访问子路径 (如 / 或 /files, 默认 /): " SUBPATH
 SUBPATH=${SUBPATH:-/}
 [[ $SUBPATH != /* ]] && SUBPATH="/$SUBPATH"
-# 确保以 / 结尾以便配置 alias
 [[ $SUBPATH != */ ]] && SUBPATH="$SUBPATH/"
 
 read -p "请输入部署目标目录 (默认 $DEFAULT_WEB_ROOT): " WEB_ROOT
@@ -128,27 +136,14 @@ else
 fi
 sudo chown -R "$DEFAULT_NGINX_USER:$DEFAULT_NGINX_USER" "$WEB_ROOT"
 
-# B. 清理旧配置 (预防冲突)
-echo -e "自动清理旧的 file-manager.conf 配置..."
-sudo rm -f "$DEFAULT_CONF_DIR/file-manager*.conf"
-if [[ "$DEFAULT_CONF_DIR" == *"/sites-available"* ]]; then
-    sudo rm -f "${DEFAULT_CONF_DIR/sites-available/sites-enabled}/file-manager*.conf"
-fi
-
-# C. 生成 Nginx 配置 (严格对齐成功样板)
-CONF_PATH="$DEFAULT_CONF_DIR/file-manager.conf"
-echo -e "生成 Nginx 样板配置: $CONF_PATH"
-
-# 准备 location 块内容
-# 注意：alias 必须以 / 结尾，样板已由 SUBPATH 保证
-LOCATION_CONTENT="location $SUBPATH {
-        # 注意：这里必须用 alias，且末尾要有斜杠
+# B. 生成配置内容
+# 注意：alias 必须以 / 结尾
+LOCATION_CONTENT="    location $SUBPATH {
         alias $WEB_ROOT/;
         index index.html;
         autoindex on;
         autoindex_format html;
 
-        # WebDAV 配置
         dav_methods PUT DELETE MKCOL COPY MOVE;
         dav_ext_methods PROPFIND OPTIONS;
         create_full_put_path on;
@@ -156,9 +151,19 @@ LOCATION_CONTENT="location $SUBPATH {
         client_max_body_size 1024m;
     }"
 
-NGINX_CONF=""
-if [[ "$ENABLE_SSL" == "y" ]]; then
-    NGINX_CONF="server {
+if [[ "$DEPLOY_MODE" == "1" ]]; then
+    # 模式 1: 完整 Site 配置
+    CONF_PATH="$DEFAULT_CONF_DIR/file-manager.conf"
+    echo -e "模式: 完整 Site 配置 -> $CONF_PATH"
+    
+    # 清理旧配置
+    sudo rm -f "$DEFAULT_CONF_DIR/file-manager*.conf"
+    if [[ "$DEFAULT_CONF_DIR" == *"/sites-available"* ]]; then
+        sudo rm -f "${DEFAULT_CONF_DIR/sites-available/sites-enabled}/file-manager*.conf"
+    fi
+
+    if [[ "$ENABLE_SSL" == "y" ]]; then
+        NGINX_CONF="server {
     listen 80;
     server_name $DOMAIN;
     return 301 https://\$host\$request_uri;
@@ -167,35 +172,43 @@ if [[ "$ENABLE_SSL" == "y" ]]; then
 server {
     listen 443 ssl;
     server_name $DOMAIN;
-
     ssl_certificate $SSL_CERT_PATH;
     ssl_certificate_key $SSL_KEY_PATH;
-
-    # SSL 安全设置对齐样板
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
     ssl_prefer_server_ciphers off;
 
-    $LOCATION_CONTENT
+$LOCATION_CONTENT
 }"
-else
-    NGINX_CONF="server {
+    else
+        NGINX_CONF="server {
     listen 80;
     server_name $DOMAIN;
 
-    $LOCATION_CONTENT
+$LOCATION_CONTENT
 }"
+    fi
+
+    echo "$NGINX_CONF" | sudo tee "$CONF_PATH" > /dev/null
+    
+    # 启用配置 (软链)
+    if [[ "$DEFAULT_CONF_DIR" == *"/sites-available"* ]]; then
+        LINK_PATH="${DEFAULT_CONF_DIR/sites-available/sites-enabled}/file-manager.conf"
+        sudo ln -sf "$CONF_PATH" "$LINK_PATH"
+    fi
+
+else
+    # 模式 2: Snippet 配置
+    SNIPPET_DIR="/etc/nginx/snippets/${DOMAIN}.locations.d"
+    CONF_PATH="$SNIPPET_DIR/proxy_files.conf"
+    echo -e "模式: Snippet 片段配置 -> $CONF_PATH"
+    
+    sudo mkdir -p "$SNIPPET_DIR"
+    echo "$LOCATION_CONTENT" | sudo tee "$CONF_PATH" > /dev/null
+    echo -e "${BLUE}提示: 请在您的主 Nginx 配置中添加: include $CONF_PATH;${NC}"
 fi
 
-echo "$NGINX_CONF" | sudo tee $CONF_PATH > /dev/null
-
-# D. 启用配置
-if [[ "$DEFAULT_CONF_DIR" == *"/sites-available"* ]]; then
-    LINK_PATH="${DEFAULT_CONF_DIR/sites-available/sites-enabled}/file-manager.conf"
-    sudo ln -sf "$CONF_PATH" "$LINK_PATH"
-fi
-
-# E. 重启验证
+# C. 重启验证
 echo -e "验证 Nginx 状态并重启..."
 if sudo nginx -t; then
     if command -v systemctl >/dev/null 2>&1; then
@@ -204,9 +217,10 @@ if sudo nginx -t; then
         sudo nginx -s reload
     fi
     echo -e "${GREEN}部署成功!${NC}"
-    PROT="http"
-    [[ "$ENABLE_SSL" == "y" ]] && PROT="https"
-    echo -e "访问地址: ${BLUE}$PROT://$DOMAIN$SUBPATH${NC}"
+    if [[ "$DEPLOY_MODE" == "1" ]]; then
+        PROT="http"; [[ "$ENABLE_SSL" == "y" ]] && PROT="https"
+        echo -e "访问地址: ${BLUE}$PROT://$DOMAIN$SUBPATH${NC}"
+    fi
 else
     echo -e "${RED}Nginx 配置错误，请检查。${NC}"
 fi
