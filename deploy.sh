@@ -117,7 +117,10 @@ fi
 read -p "请输入访问子路径 (如 / 或 /files, 默认 /): " SUBPATH
 SUBPATH=${SUBPATH:-/}
 [[ $SUBPATH != /* ]] && SUBPATH="/$SUBPATH"
-[[ $SUBPATH != */ ]] && SUBPATH="$SUBPATH/"
+# 仅对非根路径移除末尾斜杠
+if [[ "$SUBPATH" != "/" ]]; then
+    SUBPATH="${SUBPATH%/}"
+fi
 
 read -p "请输入部署目标目录 (默认 $DEFAULT_WEB_ROOT): " WEB_ROOT
 WEB_ROOT=${WEB_ROOT:-$DEFAULT_WEB_ROOT}
