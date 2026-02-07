@@ -44,14 +44,14 @@ export function updateSelectionUI() {
 
 export function renderBreadcrumbs(navigateTo) {
     const parts = state.basePath.split('/').filter(Boolean);
-    const crumbs = [];
+    el.path.innerHTML = '';
 
     // root
     const rootA = document.createElement('a');
     rootA.href = '/';
     rootA.innerHTML = '<span title="根目录">🏠</span>';
     rootA.onclick = (e) => { e.preventDefault(); navigateTo('/'); };
-    crumbs.push(rootA.outerHTML);
+    el.path.appendChild(rootA);
 
     let accum = '';
     for (let i = 0; i < parts.length; i++) {
@@ -63,16 +63,15 @@ export function renderBreadcrumbs(navigateTo) {
         sep.className = 'muted';
         sep.style.margin = '0 4px';
         sep.textContent = '/';
+        el.path.appendChild(sep);
 
         const a = document.createElement('a');
         a.href = target;
         a.textContent = escapeHtml(display);
         const currentTarget = target;
         a.onclick = (e) => { e.preventDefault(); navigateTo(currentTarget); };
-
-        crumbs.push(sep.outerHTML + a.outerHTML);
+        el.path.appendChild(a);
     }
-    el.path.innerHTML = crumbs.join('');
 }
 
 export function renderTable(callbacks) {
