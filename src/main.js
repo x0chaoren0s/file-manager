@@ -101,7 +101,7 @@ async function uploadFiles(fileList) {
             const startTime = Date.now();
 
             xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
+                if (e.lengthComputable && e.total > 0) {
                     const percent = Math.round((e.loaded / e.total) * 100);
                     progBar.style.width = percent + '%';
                     progSize.textContent = `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`;
@@ -115,24 +115,31 @@ async function uploadFiles(fileList) {
             };
 
             xhr.onload = () => {
+                console.log(`上传响应：${file.name} -> HTTP ${xhr.status}`);
                 if (xhr.status >= 200 && xhr.status < 300) {
                     setStatus(`上传完成：${file.name}`, 'success');
                     resolve();
                 } else {
-                    reject(new Error(`HTTP ${xhr.status}`));
+                    reject(new Error(`响应错误 HTTP ${xhr.status}`));
                 }
             };
 
-            xhr.onerror = () => reject(new Error('网络错误'));
+            xhr.onerror = (e) => {
+                console.error('XHR 网络错误：', e);
+                reject(new Error('网络连接中断或被拒绝'));
+            };
 
             xhr.open('PUT', encodePath(targetPath), true);
             xhr.withCredentials = true;
+            // 解决大文件上传可能需要的 header
             xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
             xhr.setRequestHeader('Overwrite', 'T');
+
+            console.log(`开始上传：${file.name} -> ${targetPath} (${formatBytes(file.size)})`);
             xhr.send(file);
         }).catch(e => {
-            console.error(e);
-            setStatus(`上传失败：${file.name}（${e.message}）`, 'error');
+            console.error('上传异常详情：', e);
+            setStatus(`上传异常：${file.name}（${e.message}）`, 'error');
         });
     }
 
